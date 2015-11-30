@@ -43,6 +43,44 @@ def test_read_people():
     people = read_people(fname)
     assert len(people) > 0
 
+def test_get_random_key():
+    key = get_random_key(100)
+    assert len(key) == 100
+    for c in key:
+        assert ord(c) >= ord("a") and ord(c) <= ord("z")
+
+def test_encrypt_decrypt_receiver_name():
+    name = "Alice Liu"
+    key = get_random_key(len(name))
+    ciphertext = encrypt_receiver_name(name, key)
+    dec_name = decrypt_receiver_name(ciphertext, key)
+    assert len(dec_name) == len(name)
+    assert name == dec_name
+
+def test_get_email_text():
+    fname = "instructions_email.txt"
+    people_fname = "names.json"
+    assert os.path.exists(fname)
+    people = read_people(people_fname)
+    names = people.keys()
+    pairs = secret_santa_hat(names)
+
+    giver = names[0]
+    assert giver in pairs
+    receiver_name = pairs[giver]
+    key = get_random_key(len(receiver_name))
+    enc_receiver_name = encrypt_receiver_name(receiver_name, key)
+
+    format_dict = {
+        "giver_name": giver,
+        "enc_receiver_name": enc_receiver_name,
+        "enc_key": key
+    }
+    email = get_email_text(fname, format_dict)
+    print email
+    assert email is not None
+
+
 if __name__ == "__main__":
     nose.run()
 

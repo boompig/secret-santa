@@ -1,3 +1,7 @@
 *.pyc
 # confidentiality
 names.json
+gmail.py
+instructions_email.md
+# generated files
+*.html
