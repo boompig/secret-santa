@@ -5,52 +5,53 @@ import random
 import subprocess
 from gmail import send_secret_santa_email
 from BeautifulSoup import BeautifulSoup
+from Crypto.Cipher import AES
+from Crypto import Random
+from binascii import b2a_base64, a2b_base64
 
-def get_random_key(keylen):
+def get_random_key():
     """Return lowercase string, which has same # of bytes as keylen"""
-    l = []
-    for i in range(keylen):
-        c = random.randint(0, 25)
-        l.append(chr(c + 97))
-    return "".join(l)
+    keylen = AES.block_size
+    bkey = Random.new().read(keylen)
+    # trim trailing newline
+    return b2a_base64(bkey)[:-1]
 
-def pad_hex(c):
-    """c is a number representing a character (0-255)"""
-    h = hex(c)[2:]
-    while len(h) < 3:
-        h = "0" + h
-    return h
 
-def encrypt_receiver_name(receiver_name, key):
-    """Goal: output should be human-readable.
-    One way to do this is to output hex, padded to 3 chars."""
-    assert len(receiver_name) == len(key)
-    rb = [ord(c) for c in receiver_name]
-    kb = [ord(c) for c in key]
-    l = []
-    for rc, kc in zip(rb, kb):
-        v = rc ^ kc
-        l.append(pad_hex(v))
-    return "".join([c for c in l])
+def encrypt_receiver_name(receiver_name, ascii_key):
+    """
+    :param receiver_name: string
+    :param ascii_key: base64-encoded string without trailing newline
+    Goal: output should be human-readable."""
+    # pad the name with null bytes
+    padded_name = receiver_name
+    while len(padded_name) % AES.block_size != 0:
+        padded_name += chr(0)
+    print("padded name = %s" % repr(padded_name))
+    iv = Random.new().read(AES.block_size)
+    binary_key = a2b_base64(ascii_key)
+    cipher = AES.new(binary_key, AES.MODE_CBC, iv)
+    binary_ct = iv + cipher.encrypt(padded_name)
+    # remove trailing newline
+    msg = b2a_base64(binary_ct)
+    return msg[:-1]
 
-def hex_string_to_byte_list(s):
-    l = []
-    for i in range(0, len(s), 3):
-        c = int("0x" + s[i:i+3], 16)
-        l.append(c)
-    return l
 
 def decrypt_receiver_name(ciphertext, key):
-    """ciphertext is a string of hex, each 3 hex chars are 1 actual byte.
-    key is a byte string"""
-    # convert ciphertext into a list of chars, same with key
-    key_list = [ord(c) for c in key]
-    cipher_list = hex_string_to_byte_list(ciphertext)
-    l = []
-    for cc, kc in zip(cipher_list, key_list):
-        v = cc ^ kc
-        l.append(chr(v))
-    return "".join([c for c in l])
+    """
+    :param ciphertext: base64-encoded string without trailing newline
+    :param key: base64-encoded string without trailing newline
+    """
+    ct_full_bin = a2b_base64(ciphertext)
+    # the first BLOCK_SIZE bytes are iv
+    iv = ct_full_bin[:AES.block_size]
+    binary_ct = ct_full_bin[AES.block_size:]
+    binary_key = a2b_base64(key)
+    cipher = AES.new(binary_key, AES.MODE_CBC, iv)
+    padded_name = cipher.decrypt(binary_ct)
+    # remove padding
+    name = padded_name[:padded_name.find(chr(0))]
+    return name
+
 
 def get_email_text(format_text_fname, fields_dict):
     # read md and modify template
@@ -74,6 +75,7 @@ def get_email_text(format_text_fname, fields_dict):
     os.remove(new_fname)
     os.remove(html_fname)
     return email_text
+
 
 def read_people(fname):
     with open(fname) as fp:
@@ -106,6 +108,7 @@ def secret_santa_hat(names):
     else:
         return pairs
 
+
 def create_and_send_pairings(people_fname, email_fname):
     people = read_people(people_fname)
     names = people.keys()
@@ -115,7 +118,7 @@ def create_and_send_pairings(people_fname, email_fname):
     for giver in pairings:
         print("Creating email for %s..." % giver)
         receiver = pairings[giver]
-        key = get_random_key(len(receiver))
+        key = get_random_key()
         enc_receiver_name = encrypt_receiver_name(receiver, key)
         email_format = {
             "enc_receiver_name": enc_receiver_name,
