@@ -5,3 +5,6 @@ gmail.py
 instructions_email.md
 # generated files
 *.html
+# cache
+.cache
+venv

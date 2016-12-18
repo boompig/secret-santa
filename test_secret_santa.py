@@ -58,7 +58,7 @@ def test_encrypt_decrypt_receiver_name():
     assert name == dec_name
 
 def test_get_email_text():
-    fname = "instructions_email.txt"
+    fname = "instructions_email.md"
     people_fname = "names.json"
     assert os.path.exists(fname)
     people = read_people(people_fname)
@@ -83,4 +83,3 @@ def test_get_email_text():
 
 if __name__ == "__main__":
     nose.run()
-

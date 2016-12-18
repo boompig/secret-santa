@@ -1,4 +1,6 @@
+from __future__ import print_function
 import json
+import os
 import random
 import subprocess
 from gmail import send_secret_santa_email
@@ -68,7 +70,10 @@ def get_email_text(format_text_fname, fields_dict):
         contents = fp.read()
         soup = BeautifulSoup(contents)
         body = soup.findAll("div", {"id": "grip-content"})[0]
-    return body.prettify()
+    email_text = body.prettify()
+    os.remove(new_fname)
+    os.remove(html_fname)
+    return email_text
 
 def read_people(fname):
     with open(fname) as fp:
@@ -101,20 +106,23 @@ def secret_santa_hat(names):
     else:
         return pairs
 
-
-def create_and_send_pairings_to_me(people_fname, email_fname):
+def create_and_send_pairings(people_fname, email_fname):
     people = read_people(people_fname)
     names = people.keys()
     pairings = secret_santa_hat(names)
-    giver = "Daniel"
-    receiver = pairings[giver]
-    key = get_random_key(len(receiver))
-    enc_receiver_name = encrypt_receiver_name(receiver, key)
-    email_format = {
-        "enc_receiver_name": enc_receiver_name,
-        "enc_key": key,
-        "giver_name": giver
-    }
-    subject = "Secret Santa: Test Email"
-    email_body = get_email_text(email_fname, email_format)
-    send_secret_santa_email(subject, email_body, people[giver])
+    for giver in pairings:
+        assert giver in people
+    for giver in pairings:
+        print("Creating email for %s..." % giver)
+        receiver = pairings[giver]
+        key = get_random_key(len(receiver))
+        enc_receiver_name = encrypt_receiver_name(receiver, key)
+        email_format = {
+            "enc_receiver_name": enc_receiver_name,
+            "enc_key": key,
+            "giver_name": giver
+        }
+        subject = "Secret Santa 2015: Pairings and Instructions"
+        email_body = get_email_text(email_fname, email_format)
+        send_secret_santa_email(subject, email_body, people[giver])
+        print("Sent")
