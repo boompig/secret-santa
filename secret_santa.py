@@ -110,12 +110,13 @@ def secret_santa_hat(names):
         return pairs
 
 
-def create_and_send_pairings(d, email_fname):
-    for giver in d:
+def send_pairings(pairings, people_fname, email_fname):
+    people = read_people(people_fname)
+    for giver in pairings:
         print("Creating email for %s..." % giver)
-        receiver = d[giver]["name"]
-        key = d[giver]["key"]
-        enc_receiver_name = d[giver]["encrypted_message"]
+        # receiver = pairings[giver]["name"]
+        key = pairings[giver]["key"]
+        enc_receiver_name = pairings[giver]["encrypted_message"]
         email_format = {
             "enc_receiver_name": enc_receiver_name,
             "enc_key": key,
@@ -123,7 +124,7 @@ def create_and_send_pairings(d, email_fname):
         }
         subject = "Secret Santa 2016: Pairings and Instructions"
         email_body = get_email_text(email_fname, email_format)
-        send_secret_santa_email(subject, email_body, receiver)
+        send_secret_santa_email(subject, email_body, people[giver])
         print("Sent to %s" % giver)
 
 
@@ -171,5 +172,5 @@ def create_and_list_pairings(people_fname):
 if __name__ == "__main__":
     people_fname = "names.json"
     email_fname = "instructions_email.md"
-    d = create_and_list_pairings(people_fname)
-    create_and_send_pairings(d, email_fname)
+    pairings = create_and_list_pairings(people_fname)
+    send_pairings(pairings, people_fname, email_fname)
