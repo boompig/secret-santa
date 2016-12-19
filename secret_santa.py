@@ -8,10 +8,12 @@ from BeautifulSoup import BeautifulSoup
 from Crypto.Cipher import AES
 from Crypto import Random
 from binascii import b2a_base64, a2b_base64
+import requests
 
 def get_random_key():
-    """Return lowercase string, which has same # of bytes as keylen"""
-    keylen = AES.block_size
+    """:return A new key, base64 encoded string without trailing newline"""
+    # 128-bit key, so 16 bytes
+    keylen = 16
     bkey = Random.new().read(keylen)
     # trim trailing newline
     return b2a_base64(bkey)[:-1]
@@ -26,7 +28,6 @@ def encrypt_receiver_name(receiver_name, ascii_key):
     padded_name = receiver_name
     while len(padded_name) % AES.block_size != 0:
         padded_name += chr(0)
-    print("padded name = %s" % repr(padded_name))
     iv = Random.new().read(AES.block_size)
     binary_key = a2b_base64(ascii_key)
     cipher = AES.new(binary_key, AES.MODE_CBC, iv)
@@ -109,23 +110,66 @@ def secret_santa_hat(names):
         return pairs
 
 
-def create_and_send_pairings(people_fname, email_fname):
-    people = read_people(people_fname)
-    names = people.keys()
-    pairings = secret_santa_hat(names)
-    for giver in pairings:
-        assert giver in people
-    for giver in pairings:
+def create_and_send_pairings(d, email_fname):
+    for giver in d:
         print("Creating email for %s..." % giver)
-        receiver = pairings[giver]
-        key = get_random_key()
-        enc_receiver_name = encrypt_receiver_name(receiver, key)
+        receiver = d[giver]["name"]
+        key = d[giver]["key"]
+        enc_receiver_name = d[giver]["encrypted_message"]
         email_format = {
             "enc_receiver_name": enc_receiver_name,
             "enc_key": key,
             "giver_name": giver
         }
-        subject = "Secret Santa 2015: Pairings and Instructions"
+        subject = "Secret Santa 2016: Pairings and Instructions"
         email_body = get_email_text(email_fname, email_format)
-        send_secret_santa_email(subject, email_body, people[giver])
-        print("Sent")
+        send_secret_santa_email(subject, email_body, receiver)
+        print("Sent to %s" % giver)
+
+
+def encrypt_name_with_api(api_base_url, name):
+    enc_url = api_base_url + "/encrypt"
+    response = requests.post(enc_url, { "name": name })
+    r_json = response.json()
+    return r_json["key"], r_json["msg"]
+
+
+def decrypt_with_api(api_base_url, key, msg):
+    dec_url = api_base_url + "/decrypt"
+    response = requests.post(dec_url, { "key": key, "ciphertext": msg })
+    r_json = response.json()
+    return r_json["name"]
+
+
+def create_and_list_pairings(people_fname):
+    api_base_url = "http://localhost:9897/secret-santa/2016"
+    people = read_people(people_fname)
+    names = people.keys()
+    pairings = secret_santa_hat(names)
+    d = {}
+    # check...
+    for giver in pairings:
+        assert giver in people
+    for giver, receiver in pairings.iteritems():
+        # print("%s -> %s" % (giver, receiver))
+        # create keys
+        key, enc_receiver_name = encrypt_name_with_api(api_base_url, receiver)
+        r_name = decrypt_with_api(api_base_url, key, enc_receiver_name)
+        print("Checking decryption API gives the correct value...")
+        assert r_name == receiver
+        # key = get_random_key()
+        # enc_receiver_name = encrypt_receiver_name(receiver, key)
+        # print("key = %s" % key)
+        # print("ciphertext = %s" % enc_receiver_name)
+        d[giver] = {
+            "name": receiver,
+            "key": key,
+            "encrypted_message": enc_receiver_name
+        }
+    return d
+
+if __name__ == "__main__":
+    people_fname = "names.json"
+    email_fname = "instructions_email.md"
+    d = create_and_list_pairings(people_fname)
+    create_and_send_pairings(d, email_fname)

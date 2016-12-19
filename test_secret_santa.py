@@ -93,7 +93,6 @@ def test_get_email_text():
         "enc_key": key
     }
     email = get_email_text(fname, format_dict)
-    print(email)
     assert email is not None
 
 
