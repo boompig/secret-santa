@@ -9,6 +9,7 @@ from Crypto.Cipher import AES
 from Crypto import Random
 from binascii import b2a_base64, a2b_base64
 import requests
+from argparse import ArgumentParser
 
 def get_random_key():
     """:return A new key, base64 encoded string without trailing newline"""
@@ -170,7 +171,14 @@ def create_and_list_pairings(people_fname):
     return d
 
 if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("--live", action="store_true", default=False,
+        help="Actually send the emails. By default dry run")
+    args = parser.parse_args()
     people_fname = "names.json"
     email_fname = "instructions_email.md"
     pairings = create_and_list_pairings(people_fname)
-    send_pairings(pairings, people_fname, email_fname)
+    if args.live:
+        send_pairings(pairings, people_fname, email_fname)
+    else:
+        print("Not sending emails since this is a dry run.")

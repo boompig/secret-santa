@@ -1,10 +1,13 @@
+# python garbage
 *.pyc
+.cache
+venv
+
 # confidentiality
 names.json
 gmail.py
 instructions_email.md
+credentials.json
+
 # generated files
 *.html
-# cache
-.cache
-venv
