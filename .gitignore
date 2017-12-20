@@ -2,6 +2,7 @@
 *.pyc
 .cache
 venv
+venv3
 
 # confidentiality
 names.json

@@ -1,15 +1,19 @@
 from __future__ import print_function
+
 import json
 import os
 import random
 import subprocess
-from gmail import send_secret_santa_email
-from BeautifulSoup import BeautifulSoup
-from Crypto.Cipher import AES
-from Crypto import Random
-from binascii import b2a_base64, a2b_base64
-import requests
 from argparse import ArgumentParser
+from binascii import a2b_base64, b2a_base64
+
+import requests
+from bs4 import BeautifulSoup
+from Crypto import Random
+from Crypto.Cipher import AES
+
+from gmail import send_secret_santa_email
+
 
 def get_random_key():
     """:return A new key, base64 encoded string without trailing newline"""
@@ -85,31 +89,42 @@ def read_people(fname):
     return obj
 
 
-def secret_santa_hat(names):
-    hat = names[:]
-    random.shuffle(hat)
-    redo = False
-    pairs = {}
-    for giver in names:
-        getter = hat[-1]
-        while giver == getter:
-            if len(hat) == 1:
-                # no more people in hat
-                redo = True
-                break
-            else:
-                random.shuffle(hat)
-                getter = hat[-1]
-                # draw again
-                pass
-        pairs[giver] = getter
-        # remove that getter from hat
-        hat.pop()
-    if redo:
-        return secret_santa_hat(names)
-    else:
-        return pairs
+def is_derangement(l1, l2):
+    assert isinstance(l1, list)
+    assert isinstance(l2, list)
+    if len(l1) != len(l2):
+        return False
+    for e1, e2 in zip(l1, l2):
+        if e1 == e2:
+            return False
+    return True
 
+
+def fisher_yates(l):
+    """in-place shuffle of list l"""
+    assert isinstance(l, list)
+    return random.shuffle(l)
+
+
+def get_derangement(l):
+    """Return a derangement of the list l. Expected runtime is e * O(n).
+    l is not modified
+    """
+    assert isinstance(l, list)
+    # necessary because we do not actually want to modify l
+    l2 = l[:]
+    while not is_derangement(l, l2):
+        fisher_yates(l2)
+    return l2
+
+
+def secret_santa_hat(names):
+    derangement = get_derangement(names)
+    d = {}
+    for giver, receiver in zip(names, derangement):
+        assert giver != receiver
+        d[giver] = receiver
+    return d
 
 def send_pairings(pairings, people_fname, email_fname):
     people = read_people(people_fname)
@@ -146,13 +161,15 @@ def decrypt_with_api(api_base_url, key, msg):
 def create_and_list_pairings(people_fname):
     api_base_url = "http://localhost:9897/secret-santa/2016"
     people = read_people(people_fname)
-    names = people.keys()
+    assert isinstance(people, dict)
+    names = list(people.keys())
+    print(names)
     pairings = secret_santa_hat(names)
     d = {}
     # check...
     for giver in pairings:
         assert giver in people
-    for giver, receiver in pairings.iteritems():
+    for giver, receiver in pairings.items():
         # print("%s -> %s" % (giver, receiver))
         # create keys
         key, enc_receiver_name = encrypt_name_with_api(api_base_url, receiver)
