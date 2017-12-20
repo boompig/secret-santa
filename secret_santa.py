@@ -1,62 +1,18 @@
 from __future__ import print_function
 
 import json
+import logging
 import os
 import random
 import subprocess
 from argparse import ArgumentParser
-from binascii import a2b_base64, b2a_base64
+from pprint import pprint
 
+import coloredlogs
 import requests
 from bs4 import BeautifulSoup
-from Crypto import Random
-from Crypto.Cipher import AES
 
 from gmail import send_secret_santa_email
-
-
-def get_random_key():
-    """:return A new key, base64 encoded string without trailing newline"""
-    # 128-bit key, so 16 bytes
-    keylen = 16
-    bkey = Random.new().read(keylen)
-    # trim trailing newline
-    return b2a_base64(bkey)[:-1]
-
-
-def encrypt_receiver_name(receiver_name, ascii_key):
-    """
-    :param receiver_name: string
-    :param ascii_key: base64-encoded string without trailing newline
-    Goal: output should be human-readable."""
-    # pad the name with null bytes
-    padded_name = receiver_name
-    while len(padded_name) % AES.block_size != 0:
-        padded_name += chr(0)
-    iv = Random.new().read(AES.block_size)
-    binary_key = a2b_base64(ascii_key)
-    cipher = AES.new(binary_key, AES.MODE_CBC, iv)
-    binary_ct = iv + cipher.encrypt(padded_name)
-    # remove trailing newline
-    msg = b2a_base64(binary_ct)
-    return msg[:-1]
-
-
-def decrypt_receiver_name(ciphertext, key):
-    """
-    :param ciphertext: base64-encoded string without trailing newline
-    :param key: base64-encoded string without trailing newline
-    """
-    ct_full_bin = a2b_base64(ciphertext)
-    # the first BLOCK_SIZE bytes are iv
-    iv = ct_full_bin[:AES.block_size]
-    binary_ct = ct_full_bin[AES.block_size:]
-    binary_key = a2b_base64(key)
-    cipher = AES.new(binary_key, AES.MODE_CBC, iv)
-    padded_name = cipher.decrypt(binary_ct)
-    # remove padding
-    name = padded_name[:padded_name.find(chr(0))]
-    return name
 
 
 def get_email_text(format_text_fname, fields_dict):
@@ -126,6 +82,7 @@ def secret_santa_hat(names):
         d[giver] = receiver
     return d
 
+
 def send_pairings(pairings, people_fname, email_fname):
     people = read_people(people_fname)
     for giver in pairings:
@@ -158,28 +115,26 @@ def decrypt_with_api(api_base_url, key, msg):
     return r_json["name"]
 
 
-def create_and_list_pairings(people_fname):
-    api_base_url = "http://localhost:9897/secret-santa/2016"
+def create_pairings(people_fname):
     people = read_people(people_fname)
     assert isinstance(people, dict)
     names = list(people.keys())
-    print(names)
     pairings = secret_santa_hat(names)
-    d = {}
     # check...
     for giver in pairings:
         assert giver in people
+    return pairings
+
+
+def encrypt_pairings(pairings):
+    api_base_url = "http://localhost:9897/secret-santa/2016"
+    d = {}
     for giver, receiver in pairings.items():
-        # print("%s -> %s" % (giver, receiver))
         # create keys
         key, enc_receiver_name = encrypt_name_with_api(api_base_url, receiver)
         r_name = decrypt_with_api(api_base_url, key, enc_receiver_name)
-        print("Checking decryption API gives the correct value...")
+        logging.info("Checking decryption API gives the correct value...")
         assert r_name == receiver
-        # key = get_random_key()
-        # enc_receiver_name = encrypt_receiver_name(receiver, key)
-        # print("key = %s" % key)
-        # print("ciphertext = %s" % enc_receiver_name)
         d[giver] = {
             "name": receiver,
             "key": key,
@@ -187,15 +142,34 @@ def create_and_list_pairings(people_fname):
         }
     return d
 
+
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    coloredlogs.install()
     parser = ArgumentParser()
     parser.add_argument("--live", action="store_true", default=False,
         help="Actually send the emails. By default dry run")
+    parser.add_argument("--encrypt", action="store_true", default=False,
+        help="Use the boompig encryption/decryption service to encrypt/decrypt the pairings")
     args = parser.parse_args()
     people_fname = "names.json"
     email_fname = "instructions_email.md"
-    pairings = create_and_list_pairings(people_fname)
+    pairings = create_pairings(people_fname)
+    if not args.live:
+        logging.warning("Not sending emails since this is a dry run.")
+        print("Pairings:")
+        for g, r in pairings.items():
+            print("{} -> {}".format(g, r))
+    if args.encrypt:
+        pairings = encrypt_pairings(pairings)
+        if not args.live:
+            for g, d in pairings.items():
+                # create the URL here:
+                import urllib.parse
+                url = "http://localhost:9897/secret-santa/2017?name={}&key={}".format(
+                    urllib.parse.quote_plus(d["encrypted_message"]),
+                    urllib.parse.quote_plus(d["key"])
+                )
+                print(url)
     if args.live:
         send_pairings(pairings, people_fname, email_fname)
-    else:
-        print("Not sending emails since this is a dry run.")
