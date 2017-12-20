@@ -91,11 +91,10 @@ def get_decryption_url(d):
     )
 
 
-def send_pairings(pairings, people_fname, email_fname):
+def send_pairings(pairings, people_fname, email_fname, send_emails=True):
     people = read_people(people_fname)
     for giver in pairings:
         print("Creating email for %s..." % giver)
-        receiver = pairings[giver]["name"]
         key = pairings[giver]["key"]
         enc_receiver_name = pairings[giver]["encrypted_message"]
         url = get_decryption_url({
@@ -103,13 +102,22 @@ def send_pairings(pairings, people_fname, email_fname):
             "enc_receiver_name": enc_receiver_name
         })
         email_format = {
-            "giver_name": receiver,
+            "giver_name": giver,
             "link": url
         }
-        subject = "Secret Santa 2016: Pairings and Instructions"
+        subject = "Secret Santa 2017: Pairings and Instructions"
         email_body = get_email_text(email_fname, email_format)
-        send_secret_santa_email(subject, email_body, people[giver])
-        print("Sent to %s" % giver)
+        # save the email body
+        try:
+            os.mkdir("data")
+        except Exception:
+            # ignore
+            pass
+        with open("data/{person}.html".format(person=giver), "w") as fp:
+            fp.write(email_body)
+        if send_emails:
+            send_secret_santa_email(subject, email_body, people[giver])
+            print("Sent to %s" % giver)
 
 
 def encrypt_name_with_api(api_base_url, name):
@@ -183,5 +191,4 @@ if __name__ == "__main__":
                 )
                 print(g)
                 print(url)
-    if args.live:
-        send_pairings(pairings, people_fname, email_fname)
+    send_pairings(pairings, people_fname, email_fname, args.live)
