@@ -1,55 +1,36 @@
-import logging
-import coloredlogs
-import json
 import smtplib
-import sys
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import json
+
+from_addr = "dbkats@gmail.com"
+credentials_fname = "credentials.json"
+
+def read_credentials(fname):
+    with open(fname) as fp:
+        return json.load(fp)
 
 
-def send_secret_santa_email(subject, email_body, giver):
-    raise NotImplementedError()
+def send_secret_santa_email(subject, message_body, to_addr):
+    credentials = read_credentials(credentials_fname)
+    from_addr = credentials["email"]
 
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = from_addr
+    msg["To"] = to_addr
 
-class Mailer:
+    gmail_credentials = {
+        "username": credentials["email"],
+        # application-specific password
+        "password": credentials["application_specific_password"]
+    }
+    mime_msg = MIMEText(message_body, "html")
+    msg.attach(mime_msg)
 
-    def __init__(self, email, password):
-        self.email = email
-        self.password = password
-
-    def send_mail(self, receiver_email):
-        sent_from = self.email  
-        to = [receiver_email]
-        subject = 'OMG Super Important Message'  
-        body = "Hey, what's up?\n\n- You"
-
-        email_text = """\  
-        From: %s  
-        To: %s  
-        Subject: %s
-
-        %s
-        """ % (sent_from, ", ".join(to), subject, body)
-
-        try:  
-            logging.info("Connecting to gmail...")
-            server = smtplib.SMTP_SSL('smtp.gmail.com', 587)
-            logging.info("Waiting for response...")
-            server.ehlo()
-            logging.info("Logging in...")
-            server.login(self.email, self.password)
-            logging.info("Sending email...")
-            server.sendmail(sent_from, to, email_text)
-            server.close()
-
-            print('Email sent!')
-        except:  
-            print('Something went wrong...')
-
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-    coloredlogs.install()
-    with open("credentials.json") as fp:
-        credentials = json.load(fp)
-        mailer = Mailer(credentials["email"], credentials["app_password"])
-    mailer.send_mail(sys.argv[1])
+    # The actual mail send
+    server = smtplib.SMTP("smtp.gmail.com:587")
+    server.starttls()
+    server.login(gmail_credentials["username"], gmail_credentials["password"])
+    server.sendmail(from_addr, to_addr, msg.as_string())
+    server.quit()
