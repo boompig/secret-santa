@@ -6,7 +6,6 @@ venv3
 
 # confidentiality
 names.json
-gmail.py
 instructions_email.md
 credentials.json
 

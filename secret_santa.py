@@ -31,7 +31,7 @@ def get_email_text(format_text_fname, fields_dict):
     assert exit_status == 0
     with open(html_fname) as fp:
         contents = fp.read()
-        soup = BeautifulSoup(contents)
+        soup = BeautifulSoup(contents, "html.parser")
         body = soup.findAll("div", {"id": "grip-content"})[0]
     email_text = body.prettify()
     os.remove(new_fname)
@@ -83,17 +83,28 @@ def secret_santa_hat(names):
     return d
 
 
+def get_decryption_url(d):
+    import urllib.parse
+    return "https://boompig.herokuapp.com/secret-santa/2017?name={}&key={}".format(
+        urllib.parse.quote_plus(d["enc_receiver_name"]),
+        urllib.parse.quote_plus(d["enc_key"])
+    )
+
+
 def send_pairings(pairings, people_fname, email_fname):
     people = read_people(people_fname)
     for giver in pairings:
         print("Creating email for %s..." % giver)
-        # receiver = pairings[giver]["name"]
+        receiver = pairings[giver]["name"]
         key = pairings[giver]["key"]
         enc_receiver_name = pairings[giver]["encrypted_message"]
-        email_format = {
-            "enc_receiver_name": enc_receiver_name,
+        url = get_decryption_url({
             "enc_key": key,
-            "giver_name": giver
+            "enc_receiver_name": enc_receiver_name
+        })
+        email_format = {
+            "giver_name": receiver,
+            "link": url
         }
         subject = "Secret Santa 2016: Pairings and Instructions"
         email_body = get_email_text(email_fname, email_format)
@@ -170,6 +181,7 @@ if __name__ == "__main__":
                     urllib.parse.quote_plus(d["encrypted_message"]),
                     urllib.parse.quote_plus(d["key"])
                 )
+                print(g)
                 print(url)
     if args.live:
         send_pairings(pairings, people_fname, email_fname)
