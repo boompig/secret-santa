@@ -5,11 +5,11 @@ __pycache__
 venv
 venv3
 MANIFEST
+.mypy_cache
+.tox
 
 # confidentiality
-names.json
-instructions_email.md
-credentials.json
+config/
 
 # generated files
-*.html
+data/
