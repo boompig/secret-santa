@@ -16,7 +16,10 @@ import requests
 from .gmail import send_secret_santa_email
 
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
-API_BASE_URL = "http://localhost:9897/secret-santa/2016"
+# used to encrypt names
+SITE_URL = "https://boompig.herokuapp.com/secret-santa/2018"
+API_BASE_URL = "https://boompig.herokuapp.com/secret-santa/api"
+
 DATA_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 
 def get_email_text(format_text_fname: str, fields_dict: dict) -> str:
@@ -100,7 +103,7 @@ def secret_santa_hat(names: List[str]) -> Dict[str, str]:
 
 def get_decryption_url(d: dict) -> str:
     import urllib.parse
-    return "https://boompig.herokuapp.com/secret-santa/2017?name={}&key={}".format(
+    return "{}?name={}&key={}".format(
         urllib.parse.quote_plus(d["enc_receiver_name"]),
         urllib.parse.quote_plus(d["enc_key"])
     )
@@ -169,8 +172,8 @@ def encrypt_pairings(pairings: Dict[str, str], api_base_url: str = API_BASE_URL)
     for giver, receiver in pairings.items():
         # create keys
         key, enc_receiver_name = encrypt_name_with_api(receiver, api_base_url)
+        logging.debug("Checking decryption API gives the correct value for %s...", receiver)
         r_name = decrypt_with_api(key, enc_receiver_name, api_base_url)
-        logging.debug("Checking decryption API gives the correct value...")
         assert r_name == receiver
         d[giver] = {
             "name": receiver,
@@ -181,9 +184,10 @@ def encrypt_pairings(pairings: Dict[str, str], api_base_url: str = API_BASE_URL)
 
 
 def create_decryption_url(encrypted_msg: str, key: str) -> str:
-    return "http://localhost:9897/secret-santa/2017?name={}&key={}".format(
-        urllib.parse.quote_plus(encrypted_msg),
-        urllib.parse.quote_plus(key)
+    return "{site_url}?name={name}&key={key}".format(
+        site_url=SITE_URL,
+        name=urllib.parse.quote_plus(encrypted_msg),
+        key=urllib.parse.quote_plus(key)
     )
 
 
@@ -201,7 +205,7 @@ def main(people_fname: str, email_fname: str, live: bool, encrypt: bool):
         else:
             for g, d in enc_pairings.items():
                 url = create_decryption_url(d["encrypted_message"], d["key"])
-                logging.debug(g)
-                logging.debug(url)
+                logging.debug("Giver = %s", g)
+                logging.debug("Decryption URL = %s", url)
     else:
         raise Exception("Unencrypted pairings no longer supported")
