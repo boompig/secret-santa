@@ -11,10 +11,11 @@ from typing import List, Dict, Tuple
 import tempfile
 from markdown2 import Markdown
 import urllib.parse
+import sys
 
 import requests
 
-from .gmail import send_secret_santa_email
+from .gmail import send_secret_santa_email, Mailer
 
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
 # used to encrypt names
@@ -58,9 +59,12 @@ def get_email_text(format_text_fname: str, fields_dict: dict) -> str:
 
 
 def read_people(fname: str) -> Dict[str, str]:
-    with open(fname) as fp:
-        obj = json.load(fp)
-    return obj
+    try:
+        with open(fname) as fp:
+            return json.load(fp)
+    except Exception:
+        logging.critical("Failed to read people from file %s", fname)
+        sys.exit(1)
 
 
 def is_derangement(l1: list, l2: list) -> bool:
@@ -102,14 +106,41 @@ def secret_santa_hat(names: List[str]) -> Dict[str, str]:
     return d
 
 
+def get_email_fname(giver_name: str) -> str:
+    email_output_dir = os.path.join(DATA_OUTPUT_DIR, "emails")
+    try:
+        os.makedirs(email_output_dir)
+    except Exception:
+        # ignore
+        pass
+    email_fname = os.path.join(email_output_dir, f"{giver_name}.html")
+    return email_fname
+
+
+def send_all_emails(pairings: Dict[str, dict],
+                    email_subject: str,
+                    people_fname: str) -> None:
+    people = read_people(people_fname)
+    # create email text for each person
+    mailer = Mailer()
+    for giver in pairings:
+        logging.info("Sending email to %s...", giver)
+        email_fname = get_email_fname(giver)
+        with open(email_fname) as fp:
+            email_body = fp.read()
+        assert isinstance(email_body, str)
+        mailer.send_email(email_subject, email_body, people[giver])
+        logging.info("Sent to %s", giver)
+    mailer.cleanup()
+
+
 def send_encrypted_pairings(pairings: Dict[str, dict],
                   people_fname: str,
                   email_fname: str,
+                  email_subject: str,
                   send_emails: bool = True) -> None:
-    assert os.path.exists(people_fname)
-    people = read_people(people_fname)
     for giver in pairings:
-        print("Creating email for %s..." % giver)
+        logging.debug("Creating email body for %s...", giver)
         key = pairings[giver]["key"]
         enc_receiver_name = pairings[giver]["encrypted_message"]
         url = create_decryption_url(
@@ -120,21 +151,12 @@ def send_encrypted_pairings(pairings: Dict[str, dict],
             "giver_name": giver,
             "link": url
         }
-        subject = "Secret Santa 2017: Pairings and Instructions"
         email_body = get_email_text(email_fname, email_format)
-        # save the email body
-        email_output_dir = os.path.join(DATA_OUTPUT_DIR, "emails")
-        email_fname = os.path.join(email_output_dir, f"{giver}.html")
-        try:
-            os.makedirs(email_output_dir)
-        except Exception:
-            # ignore
-            pass
+        email_fname = get_email_fname(giver)
         with open(email_fname, "w") as fp:
             fp.write(email_body)
-        if send_emails:
-            send_secret_santa_email(subject, email_body, people[giver])
-            print("Sent to %s" % giver)
+    if send_emails:
+        send_all_emails(pairings, email_subject, people_fname)
 
 
 def encrypt_name_with_api(name: str, api_base_url: str = API_BASE_URL) -> Tuple[str, str]:
@@ -188,17 +210,34 @@ def create_decryption_url(encrypted_msg: str, key: str) -> str:
     )
 
 
-def main(people_fname: str, email_fname: str, live: bool, encrypt: bool):
+def read_config(fname: str) -> dict:
+    try:
+        with open(fname) as fp:
+            return json.load(fp)
+    except Exception:
+        logging.critical("Failed to read config file %s", fname)
+        sys.exit(1)
+
+
+def main(people_fname: str, email_fname: str, config_fname: str,
+         live: bool, encrypt: bool):
     pairings = create_pairings(people_fname)
     if not live:
         logging.warning("Not sending emails since this is a dry run.")
         print("Pairings:")
         for i, (g, r) in enumerate(pairings.items()):
             print(f"\t{i + 1}. {g} -> {r}")
+    config = read_config(config_fname)
     if encrypt:
         enc_pairings = encrypt_pairings(pairings)
         if live:
-            send_encrypted_pairings(enc_pairings, people_fname, email_fname, live)
+            send_encrypted_pairings(
+                pairings=enc_pairings,
+                people_fname=people_fname,
+                email_fname=email_fname,
+                email_subject=config["email_subject"],
+                send_emails=live
+            )
         else:
             # print the decryption URLs
             for g, d in enc_pairings.items():
@@ -210,4 +249,5 @@ def main(people_fname: str, email_fname: str, live: bool, encrypt: bool):
                     "link": url
                 })
     else:
-        raise Exception("Unencrypted pairings no longer supported")
+        logging.critical("Unencrypted pairings no longer supported")
+        sys.exit(1)

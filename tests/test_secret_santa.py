@@ -14,9 +14,11 @@ def _get_random_names(num_names):
         names.append(chr(i))
     return names
 
+
 def test_get_random_names():
     names = _get_random_names(50)
     assert len(names) == 50
+
 
 def test_unique_pairs():
     """Make sure each secret-pair is unique"""
@@ -30,12 +32,14 @@ def test_unique_pairs():
     assert len(giver_set) == len(names)
     assert len(getter_set) == len(names)
 
+
 def test_not_self():
     """Make sure you never get yourself in secret santa"""
     names = _get_random_names(50)
     pairs = secret_santa.secret_santa_hat(names)
     for giver, getter in pairs.items():
         assert giver != getter
+
 
 def test_all_names_are_givers():
     """Make sure each person is a giver"""
@@ -47,15 +51,18 @@ def test_all_names_are_givers():
     for a, b in zip(sorted(orig_name_set), sorted(giver_name_set)):
         assert a == b
 
+
 def test_read_people():
     fname = os.path.join(CONFIG_DIR, "names.json")
     assert os.path.exists(fname)
     people = secret_santa.read_people(fname)
     assert len(people) > 0
 
+
 def test_get_random_key():
     key = get_random_key()
     assert key[-2:] == b"=="
+
 
 def test_get_email_text():
     """Make sure can convert markdown into HTML email and all fields are filled out

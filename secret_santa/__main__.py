@@ -25,11 +25,13 @@ if __name__ == "__main__":
     setup_logging(args.verbose)
     people_fname = os.path.join(CONFIG_DIR, "names.json")
     email_fname = os.path.join(CONFIG_DIR, "instructions_email.md")
+    config_fname = os.path.join(CONFIG_DIR, "config.json")
     assert os.path.exists(people_fname)
     assert os.path.exists(email_fname)
     main(
         email_fname=email_fname,
         people_fname=people_fname,
+        config_fname=config_fname,
         live=args.live,
         encrypt=args.encrypt
     )
