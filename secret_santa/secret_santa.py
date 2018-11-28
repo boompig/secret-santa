@@ -132,6 +132,7 @@ def send_all_emails(pairings: Dict[str, dict],
         mailer.send_email(email_subject, email_body, people[giver])
         logging.info("Sent to %s", giver)
     mailer.cleanup()
+    logging.debug("Connection closed. All emails sent.")
 
 
 def send_encrypted_pairings(pairings: Dict[str, dict],
