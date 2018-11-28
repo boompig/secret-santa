@@ -135,11 +135,8 @@ def send_all_emails(givers: List[str],
     logging.debug("Connection closed. All emails sent.")
 
 
-def send_encrypted_pairings(pairings: Dict[str, dict],
-                  people_fname: str,
-                  email_fname: str,
-                  email_subject: str,
-                  send_emails: bool = True) -> None:
+def create_emails(pairings: Dict[str, dict],
+                  email_template_fname: str) -> None:
     for giver in pairings:
         logging.debug("Creating email body for %s...", giver)
         key = pairings[giver]["key"]
@@ -152,13 +149,11 @@ def send_encrypted_pairings(pairings: Dict[str, dict],
             "giver_name": giver,
             "link": url
         }
-        email_body = get_email_text(email_fname, email_format)
+        email_body = get_email_text(email_template_fname, email_format)
         email_fname = get_email_fname(giver)
         with open(email_fname, "w") as fp:
             fp.write(email_body)
-    if send_emails:
-        givers = list(pairings.keys())
-        send_all_emails(givers, email_subject, people_fname)
+    logging.debug("Created emails for everyone")
 
 
 def encrypt_name_with_api(name: str, api_base_url: str = API_BASE_URL) -> Tuple[str, str]:
@@ -243,13 +238,16 @@ def main(people_fname: str, email_fname: str, config_fname: str,
     config = read_config(config_fname)
     if encrypt:
         enc_pairings = encrypt_pairings(pairings)
+        create_emails(
+            pairings=enc_pairings,
+            email_template_fname=email_fname,
+        )
         if live:
-            send_encrypted_pairings(
-                pairings=enc_pairings,
+            givers = list(enc_pairings.keys())
+            send_all_emails(
+                givers=givers,
                 people_fname=people_fname,
-                email_fname=email_fname,
                 email_subject=config["email_subject"],
-                send_emails=live
             )
         else:
             # print the decryption URLs
@@ -257,10 +255,6 @@ def main(people_fname: str, email_fname: str, config_fname: str,
                 url = create_decryption_url(encrypted_msg=d["encrypted_message"], key=d["key"])
                 print(f"Giver = {g}")
                 print(f"Decryption URL = {url}")
-                _ = get_email_text(email_fname, {
-                    "giver_name": g,
-                    "link": url
-                })
     else:
         logging.critical("Unencrypted pairings no longer supported")
         sys.exit(1)
