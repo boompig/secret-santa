@@ -117,13 +117,13 @@ def get_email_fname(giver_name: str) -> str:
     return email_fname
 
 
-def send_all_emails(pairings: Dict[str, dict],
+def send_all_emails(givers: List[str],
                     email_subject: str,
                     people_fname: str) -> None:
     people = read_people(people_fname)
     # create email text for each person
     mailer = Mailer()
-    for giver in pairings:
+    for giver in givers:
         logging.info("Sending email to %s...", giver)
         email_fname = get_email_fname(giver)
         with open(email_fname) as fp:
@@ -157,7 +157,8 @@ def send_encrypted_pairings(pairings: Dict[str, dict],
         with open(email_fname, "w") as fp:
             fp.write(email_body)
     if send_emails:
-        send_all_emails(pairings, email_subject, people_fname)
+        givers = list(pairings.keys())
+        send_all_emails(givers, email_subject, people_fname)
 
 
 def encrypt_name_with_api(name: str, api_base_url: str = API_BASE_URL) -> Tuple[str, str]:
@@ -220,8 +221,19 @@ def read_config(fname: str) -> dict:
         sys.exit(1)
 
 
+def resend(people_fname: str, email_fname: str, config_fname: str,
+           resend_to: List[str]) -> None:
+    assert isinstance(resend_to, list)
+    config = read_config(config_fname)
+    send_all_emails(
+        givers=resend_to,
+        email_subject=config["email_subject"],
+        people_fname=people_fname
+    )
+
+
 def main(people_fname: str, email_fname: str, config_fname: str,
-         live: bool, encrypt: bool):
+         live: bool, encrypt: bool) -> None:
     pairings = create_pairings(people_fname)
     if not live:
         logging.warning("Not sending emails since this is a dry run.")
