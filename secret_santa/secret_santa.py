@@ -10,6 +10,7 @@ from pprint import pprint
 from typing import List, Dict, Tuple
 import tempfile
 from markdown2 import Markdown
+import urllib.parse
 
 import requests
 
@@ -102,7 +103,6 @@ def secret_santa_hat(names: List[str]) -> Dict[str, str]:
 
 
 def get_decryption_url(d: dict) -> str:
-    import urllib.parse
     return "{}?name={}&key={}".format(
         urllib.parse.quote_plus(d["enc_receiver_name"]),
         urllib.parse.quote_plus(d["enc_key"])
@@ -130,12 +130,14 @@ def send_encrypted_pairings(pairings: Dict[str, dict],
         subject = "Secret Santa 2017: Pairings and Instructions"
         email_body = get_email_text(email_fname, email_format)
         # save the email body
+        email_output_dir = os.path.join(DATA_OUTPUT_DIR, "emails")
+        email_fname = os.path.join(email_output_dir, f"{giver}.html")
         try:
-            os.mkdir("data")
+            os.makedirs(email_output_dir)
         except Exception:
             # ignore
             pass
-        with open("data/{person}.html".format(person=giver), "w") as fp:
+        with open(email_fname, "w") as fp:
             fp.write(email_body)
         if send_emails:
             send_secret_santa_email(subject, email_body, people[giver])
@@ -208,5 +210,9 @@ def main(people_fname: str, email_fname: str, live: bool, encrypt: bool):
                 url = create_decryption_url(d["encrypted_message"], d["key"])
                 print(f"Giver = {g}")
                 print(f"Decryption URL = {url}")
+                _ = get_email_text(email_fname, {
+                    "giver_name": g,
+                    "link": url
+                })
     else:
         raise Exception("Unencrypted pairings no longer supported")
