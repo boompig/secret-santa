@@ -102,10 +102,12 @@ def secret_santa_hat(names: List[str]) -> Dict[str, str]:
     return d
 
 
-def get_decryption_url(d: dict) -> str:
+def get_decryption_url(enc_receiver_name: str, enc_key: str) -> str:
+    assert isinstance(enc_receiver_name, str)
+    assert isinstance(enc_key, str)
     return "{}?name={}&key={}".format(
-        urllib.parse.quote_plus(d["enc_receiver_name"]),
-        urllib.parse.quote_plus(d["enc_key"])
+        urllib.parse.quote_plus(enc_receiver_name),
+        urllib.parse.quote_plus(enc_key)
     )
 
 
@@ -119,10 +121,10 @@ def send_encrypted_pairings(pairings: Dict[str, dict],
         print("Creating email for %s..." % giver)
         key = pairings[giver]["key"]
         enc_receiver_name = pairings[giver]["encrypted_message"]
-        url = get_decryption_url({
-            "enc_key": key,
-            "enc_receiver_name": enc_receiver_name
-        })
+        url = get_decryption_url(
+            enc_key=key,
+            enc_receiver_name=enc_receiver_name
+        )
         email_format = {
             "giver_name": giver,
             "link": url
