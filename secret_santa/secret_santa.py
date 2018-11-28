@@ -203,9 +203,10 @@ def main(people_fname: str, email_fname: str, live: bool, encrypt: bool):
         if live:
             send_encrypted_pairings(enc_pairings, people_fname, email_fname, live)
         else:
+            # print the decryption URLs
             for g, d in enc_pairings.items():
                 url = create_decryption_url(d["encrypted_message"], d["key"])
-                logging.debug("Giver = %s", g)
-                logging.debug("Decryption URL = %s", url)
+                print(f"Giver = {g}")
+                print(f"Decryption URL = {url}")
     else:
         raise Exception("Unencrypted pairings no longer supported")
