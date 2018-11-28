@@ -2,17 +2,19 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import json
+import os
 
-from_addr = "dbkats@gmail.com"
-credentials_fname = "credentials.json"
+CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
+CREDENTIALS_FNAME = os.path.join(CONFIG_DIR, "credentials.json")
 
-def read_credentials(fname):
+def read_credentials(fname: str) -> dict:
     with open(fname) as fp:
         return json.load(fp)
 
 
-def send_secret_santa_email(subject, message_body, to_addr):
-    credentials = read_credentials(credentials_fname)
+def send_secret_santa_email(subject: str, message_body: str, to_addr: str) -> None:
+    assert os.path.exists(CREDENTIALS_FNAME)
+    credentials = read_credentials(CREDENTIALS_FNAME)
     from_addr = credentials["email"]
 
     msg = MIMEMultipart("alternative")

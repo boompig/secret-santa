@@ -102,15 +102,6 @@ def secret_santa_hat(names: List[str]) -> Dict[str, str]:
     return d
 
 
-def get_decryption_url(enc_receiver_name: str, enc_key: str) -> str:
-    assert isinstance(enc_receiver_name, str)
-    assert isinstance(enc_key, str)
-    return "{}?name={}&key={}".format(
-        urllib.parse.quote_plus(enc_receiver_name),
-        urllib.parse.quote_plus(enc_key)
-    )
-
-
 def send_encrypted_pairings(pairings: Dict[str, dict],
                   people_fname: str,
                   email_fname: str,
@@ -121,9 +112,9 @@ def send_encrypted_pairings(pairings: Dict[str, dict],
         print("Creating email for %s..." % giver)
         key = pairings[giver]["key"]
         enc_receiver_name = pairings[giver]["encrypted_message"]
-        url = get_decryption_url(
-            enc_key=key,
-            enc_receiver_name=enc_receiver_name
+        url = create_decryption_url(
+            key=key,
+            encrypted_msg=enc_receiver_name
         )
         email_format = {
             "giver_name": giver,
@@ -188,6 +179,8 @@ def encrypt_pairings(pairings: Dict[str, str], api_base_url: str = API_BASE_URL)
 
 
 def create_decryption_url(encrypted_msg: str, key: str) -> str:
+    """:param encrypted_msg:        Receiver's encrypted name
+    """
     return "{site_url}?name={name}&key={key}".format(
         site_url=SITE_URL,
         name=urllib.parse.quote_plus(encrypted_msg),
@@ -209,7 +202,7 @@ def main(people_fname: str, email_fname: str, live: bool, encrypt: bool):
         else:
             # print the decryption URLs
             for g, d in enc_pairings.items():
-                url = create_decryption_url(d["encrypted_message"], d["key"])
+                url = create_decryption_url(encrypted_msg=d["encrypted_message"], key=d["key"])
                 print(f"Giver = {g}")
                 print(f"Decryption URL = {url}")
                 _ = get_email_text(email_fname, {
