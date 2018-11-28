@@ -16,9 +16,9 @@ Run (inside virtualenv) with:
 python -m secret_santa --encrypt --live
 ```
 
-The `--help` is also available and gives additional options. A directory called `data` will be created with files for debugging.
+The `--help` switch is also available and gives additional options. A directory called `data` will be created with files for debugging.
 
 ## How to test
 
 - specify the correct `API_BASE_URL` in the test script
-- run `tox` inside the virtualenv
+- run `tox` *outside* the virtualenv
