@@ -8,6 +8,9 @@ MANIFEST
 .mypy_cache
 .tox
 
+# editor
+*.code-workspace
+
 # confidentiality
 config/
 

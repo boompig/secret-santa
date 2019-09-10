@@ -19,7 +19,17 @@ python -m secret_santa --encrypt --live
 
 The `--help` switch is also available and gives additional options. A directory called `data` will be created with files for debugging.
 
-## How to test
+## Development
+
+Create virtualenv and install dependencies
+
+```
+virtualenv venv3 --python=$(which python3)
+source venv3/bin/activate
+pip install -r requirements.txt
+```
+
+## Testing
 
 - specify the correct `API_BASE_URL` in the test script
 - run `tox` *outside* the virtualenv

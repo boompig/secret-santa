@@ -5,6 +5,7 @@ import json
 import os
 import logging
 import sys
+from typing import Optional
 
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
 CREDENTIALS_FNAME = os.path.join(CONFIG_DIR, "credentials.json")
@@ -16,14 +17,14 @@ class Mailer:
         # only read credentials once from disk
         self._credentials = read_credentials(CREDENTIALS_FNAME)
         # reuse server
-        self._server = None
+        self._server = None  # type: Optional[smtplib.SMTP]
 
     @property
     def server(self) -> smtplib.SMTP:
         # perform server connection only once
         if self._server is None:
             logging.debug("Connecting to Gmail over port 587...")
-            self._server = smtplib.SMTP("smtp.gmail.com", 587)  # type: smtplib.SMTP
+            self._server = smtplib.SMTP("smtp.gmail.com", 587)
             assert self._server is not None
             logging.debug("Starting TLS...")
             self._server.starttls()
