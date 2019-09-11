@@ -1,9 +1,16 @@
+import json
 import os
+from unittest.mock import patch, mock_open
 
 from secret_santa.crypto_utils import get_random_key
 from secret_santa import secret_santa
 
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
+NAMES = {
+    "Light Yagami": "kira@deathnote.slav",
+    "Eru Roraito": "l@deathnote.slav",
+    "Misa Amane": "misamisa@deathnote.slav"
+}
 
 
 def _get_random_names(num_names):
@@ -53,10 +60,13 @@ def test_all_names_are_givers():
 
 
 def test_read_people():
+    s = json.dumps(NAMES)
     fname = os.path.join(CONFIG_DIR, "names.json")
-    assert os.path.exists(fname)
-    people = secret_santa.read_people(fname)
-    assert len(people) > 0
+    with patch("builtins.open", mock_open(read_data=s)) as mock_file:
+        people = secret_santa.read_people(fname)
+        assert len(people) > 0
+        mock_file.assert_called_once()
+
 
 
 def test_get_random_key():
@@ -69,9 +79,11 @@ def test_get_email_text():
     """
     fname = os.path.join(CONFIG_DIR, "instructions_email.md")
     people_fname = os.path.join(CONFIG_DIR, "names.json")
+    people_data = json.dumps(NAMES)
+    with patch("builtins.open", mock_open(read_data=people_data)) as mock_file:
+        people = secret_santa.read_people(people_fname)
+        mock_file.assert_called_once()
     assert os.path.exists(fname)
-    assert os.path.exists(people_fname)
-    people = secret_santa.read_people(people_fname)
     names = list(people.keys())
     pairs = secret_santa.secret_santa_hat(names)
     giver = names[0]
@@ -87,3 +99,4 @@ def test_get_email_text():
     }
     email = secret_santa.get_email_text(fname, format_dict)
     assert email is not None
+    mock_file.assert_called_once()

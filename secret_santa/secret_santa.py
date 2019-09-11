@@ -4,18 +4,14 @@ import json
 import logging
 import os
 import random
-import subprocess
 import urllib.parse
-from pprint import pprint
 from typing import List, Dict, Tuple
-import tempfile
 from markdown2 import Markdown
-import urllib.parse
 import sys
 
 import requests
 
-from .gmail import send_secret_santa_email, Mailer
+from .gmail import Mailer
 
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
 # used to encrypt names
@@ -62,7 +58,7 @@ def read_people(fname: str) -> Dict[str, str]:
     try:
         with open(fname) as fp:
             return json.load(fp)
-    except Exception:
+    except FileNotFoundError:
         logging.critical("Failed to read people from file %s", fname)
         sys.exit(1)
 
