@@ -38,3 +38,4 @@ virtualenv==16.7.5
 wcwidth==0.1.7
 wrapt==1.10.11
 zipp==0.6.0
+pyflakes==2.1.1

@@ -28,8 +28,8 @@ if __name__ == "__main__":
     people_fname = os.path.join(CONFIG_DIR, "names.json")
     email_fname = os.path.join(CONFIG_DIR, "instructions_email.md")
     config_fname = os.path.join(CONFIG_DIR, "config.json")
-    assert os.path.exists(people_fname), "file %s does not exist" % people_fname
-    assert os.path.exists(email_fname)
+    assert os.path.exists(people_fname), f"file {people_fname} does not exist"
+    assert os.path.exists(email_fname), f"file {email_fname} does not exist"
     if args.resend:
         resend(
             email_fname=email_fname,
