@@ -1,9 +1,11 @@
 import json
 import os
-from unittest.mock import patch, mock_open
+from typing import List
+from unittest.mock import mock_open, patch
+import random
 
-from secret_santa.crypto_utils import get_random_key
 from secret_santa import secret_santa
+from secret_santa.crypto_utils import get_random_key
 
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
 NAMES = {
@@ -13,12 +15,12 @@ NAMES = {
 }
 
 
-def _get_random_names(num_names):
+def _get_random_names(num_names: int) -> List[str]:
+    """random is a misnomer. They're just names used during testing."""
     assert num_names > 0
-    assert num_names < 255
     names = []
     for i in range(num_names):
-        names.append(chr(i))
+        names.append(f"Steve #{i + 1}")
     return names
 
 
@@ -60,13 +62,87 @@ def test_all_names_are_givers():
 
 
 def test_read_people():
-    s = json.dumps(NAMES)
+    s = json.dumps({"names": NAMES})
     fname = os.path.join(CONFIG_DIR, "names.json")
     with patch("builtins.open", mock_open(read_data=s)) as mock_file:
         people = secret_santa.read_people(fname)
         assert len(people) > 0
         mock_file.assert_called_once()
 
+
+def test_secret_santa_search_with_single_always_constraint():
+    names = _get_random_names(10)
+    a = names[0]
+    b = names[1]
+    givers = names.copy()
+    givers.remove(a)
+    receivers = names.copy()
+    receivers.remove(b)
+
+    for i in range(10):
+        # reset this variable
+        assignments = {}
+        assignments[a] = b
+
+        # predictable execution
+        random.seed(i + 1)
+
+        # method modifies this arrays
+        g2 = givers[:]
+        r2 = receivers[:]
+        assert secret_santa.secret_santa_search(assignments, g2, r2)
+        assert assignments[a] == b
+
+
+def test_secret_santa_search_with_multiple_always_constraints():
+    names = _get_random_names(10)
+    a = names[0]
+    b = names[1]
+    c = names[2]
+    givers = names.copy()
+    givers.remove(a)
+    givers.remove(b)
+    givers.remove(c)
+    receivers = names.copy()
+    receivers.remove(a)
+    receivers.remove(b)
+    receivers.remove(c)
+
+    for i in range(10):
+        # reset this variable
+        assignments = {}
+        assignments[a] = b
+        assignments[b] = c
+        assignments[c] = a
+
+        # predictable execution
+        random.seed(i + 1)
+
+        # method modifies these arrays
+        g2 = givers[:]
+        random.shuffle(g2)
+        r2 = receivers[:]
+        random.shuffle(r2)
+        assert secret_santa.secret_santa_search(assignments, g2, r2)
+        assert assignments[a] == b
+        assert assignments[b] == c
+        assert assignments[c] == a
+
+
+def test_secret_santa_hat_with_multiple_always_constraints():
+    names = _get_random_names(10)
+    a = names[0]
+    b = names[1]
+    c = names[2]
+    always_constraints = [
+        [a, b],
+        [b, c],
+        [c, a]
+    ]
+    assignments = secret_santa.secret_santa_hat(names, always_constraints)
+    assert assignments[a] == b
+    assert assignments[b] == c
+    assert assignments[c] == a
 
 
 def test_get_random_key():
@@ -79,7 +155,7 @@ def test_get_email_text():
     """
     fname = os.path.join(CONFIG_DIR, "instructions_email.md")
     people_fname = os.path.join(CONFIG_DIR, "names.json")
-    people_data = json.dumps(NAMES)
+    people_data = json.dumps({"names": NAMES})
     with patch("builtins.open", mock_open(read_data=people_data)) as mock_file:
         people = secret_santa.read_people(people_fname)
         mock_file.assert_called_once()
