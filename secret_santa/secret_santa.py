@@ -128,7 +128,7 @@ def secret_santa_hat_simple(names: List[str]) -> Dict[str, str]:
     return d
 
 
-def secret_santa_search(assignments: dict,
+def secret_santa_search(assignments: Dict[str, str],
                         available_givers: List[str],
                         available_receivers: List[str]) -> bool:
     """
