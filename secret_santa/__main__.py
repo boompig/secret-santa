@@ -1,8 +1,12 @@
 import logging
-from argparse import ArgumentParser
-from .secret_santa import main, resend, sanity_check_emails, CONFIG_DIR, DATA_OUTPUT_DIR
 import os.path
+from argparse import ArgumentParser
+
 import coloredlogs
+
+from .secret_santa import (CONFIG_DIR, DATA_OUTPUT_DIR, main, resend,
+                           sanity_check_emails,
+                           sanity_check_encrypted_pairings)
 
 
 def setup_logging(verbose: bool):
@@ -24,7 +28,9 @@ if __name__ == "__main__":
     parser.add_argument("--resend", nargs="+", default=None,
         help="Resend emails to the people listed. Can give as many people. Names must match exactly with names file.")
     parser.add_argument("--sanity-check", action="store_true",
-        help="Checks existing emails to verify that the pairings were correct")
+        help="Checks saved encrypted pairings to verify that the pairings were valid")
+    parser.add_argument("--sanity-check-emails", action="store_true",
+        help="Checks existing emails to verify that the pairings were valid")
     parser.add_argument("-s", "--random-seed", type=int, default=None,
         help="Random seed to use")
     args = parser.parse_args()
@@ -42,6 +48,11 @@ if __name__ == "__main__":
             resend_to=args.resend
         )
     elif args.sanity_check:
+        sanity_check_encrypted_pairings(
+            data_dir=DATA_OUTPUT_DIR,
+            people_fname=people_fname,
+        )
+    elif args.sanity_check_emails:
         sanity_check_emails(
             data_dir=DATA_OUTPUT_DIR,
             people_fname=people_fname,

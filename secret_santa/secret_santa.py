@@ -318,6 +318,30 @@ def sanity_check_pairings(pairings: Dict[str, str], names: List[str]):
     logging.info("Sanity check complete! Pairings looking good!")
 
 
+def sanity_check_encrypted_pairings(data_dir: str, people_fname: str):
+    """
+    Throws assertion error on failure
+    """
+    fname = os.path.join(data_dir, "encrypted_pairings.json")
+    enc_pairings = {}  # type: Dict[str, dict]
+    with open(fname) as fp:
+        enc_pairings = json.load(fp)
+    logging.debug("Read encrypted pairings from disk")
+    pairings = {}  # type: Dict[str, str]
+    for giver, enc_receiver in enc_pairings.items():
+        r = decrypt_with_api(
+            key=enc_receiver["key"],
+            msg=enc_receiver["encrypted_message"],
+            api_base_url=API_BASE_URL
+        )
+        pairings[giver] = r
+    people = read_people(people_fname)
+    names = list(people.keys())
+    assert isinstance(names, list)
+    logging.debug("Successfully read names from config folder")
+    sanity_check_pairings(pairings, names)
+
+
 def sanity_check_emails(data_dir: str, people_fname: str):
     """
     Throws assertion error on failure
