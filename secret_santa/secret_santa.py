@@ -6,10 +6,11 @@ import os
 import random
 import sys
 import urllib.parse
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
-import requests
 from markdown2 import Markdown
+from .email_utils import extract_all_pairings_from_emails
+from .api import encrypt_name_with_api, decrypt_with_api
 
 from .gmail import Mailer
 
@@ -243,19 +244,6 @@ def create_emails(pairings: Dict[str, dict],
     logging.debug("Created emails for everyone")
 
 
-def encrypt_name_with_api(name: str, api_base_url: str = API_BASE_URL) -> Tuple[str, str]:
-    enc_url = api_base_url + "/encrypt"
-    response = requests.post(enc_url, { "name": name })
-    r_json = response.json()
-    return r_json["key"], r_json["msg"]
-
-
-def decrypt_with_api(key: str, msg: str, api_base_url: str = API_BASE_URL) -> str:
-    dec_url = api_base_url + "/decrypt"
-    response = requests.post(dec_url, { "key": key, "ciphertext": msg })
-    r_json = response.json()
-    return r_json["name"]
-
 
 def create_pairings(people_fname: str) -> Dict[str, str]:
     people = read_people(people_fname)
@@ -311,6 +299,20 @@ def resend(people_fname: str, email_fname: str, config_fname: str,
         email_subject=config["email_subject"],
         people_fname=people_fname
     )
+
+
+def sanity_check(data_dir: str):
+    email_dir = os.path.join(data_dir, "emails")
+    pairings = extract_all_pairings_from_emails(email_dir, API_BASE_URL)
+    logging.debug("All pairings extracted from emails")
+    assert isinstance(pairings, dict)
+    receivers = set(pairings.values())
+    givers = set(pairings.keys())
+    assert receivers == givers, "Givers and Receivers should be the same set"
+    assert len(givers) == len(pairings), "Pairings should not have duplicates"
+    for giver, receiver in pairings.items():
+        assert giver != receiver, "Giver and receiver cannot be the same"
+    logging.info("Sanity check complete! Pairings looking good!")
 
 
 def main(people_fname: str, email_fname: str, config_fname: str,

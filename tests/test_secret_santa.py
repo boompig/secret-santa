@@ -5,6 +5,7 @@ from unittest.mock import mock_open, patch
 import random
 
 from secret_santa import secret_santa
+from secret_santa.secret_santa import API_BASE_URL
 from secret_santa.crypto_utils import get_random_key
 
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
@@ -166,7 +167,7 @@ def test_get_email_text():
     assert giver in pairs
     receiver_name = pairs[giver]
     key = get_random_key()
-    key, enc_receiver_name = secret_santa.encrypt_name_with_api(receiver_name)
+    key, enc_receiver_name = secret_santa.encrypt_name_with_api(receiver_name, API_BASE_URL)
     format_dict = {
         "giver_name": giver,
         "enc_receiver_name": enc_receiver_name,
