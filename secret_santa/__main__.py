@@ -25,6 +25,8 @@ if __name__ == "__main__":
         help="Resend emails to the people listed. Can give as many people. Names must match exactly with names file.")
     parser.add_argument("--sanity-check", action="store_true",
         help="Checks existing emails to verify that the pairings were correct")
+    parser.add_argument("-s", "--random-seed", type=int, default=None,
+        help="Random seed to use")
     args = parser.parse_args()
     setup_logging(args.verbose)
     people_fname = os.path.join(CONFIG_DIR, "names.json")
@@ -50,5 +52,6 @@ if __name__ == "__main__":
             people_fname=people_fname,
             config_fname=config_fname,
             live=args.live,
-            encrypt=args.encrypt
+            encrypt=args.encrypt,
+            random_seed=args.random_seed
         )

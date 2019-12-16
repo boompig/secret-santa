@@ -1,12 +1,12 @@
 import json
 import os
+import random
 from typing import List
 from unittest.mock import mock_open, patch
-import random
 
 from secret_santa import secret_santa
-from secret_santa.secret_santa import API_BASE_URL
 from secret_santa.crypto_utils import get_random_key
+from secret_santa.secret_santa import API_BASE_URL
 
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
 NAMES = {

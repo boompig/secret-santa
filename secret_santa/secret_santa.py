@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import copy
 import json
 import logging
 import os
@@ -9,9 +10,9 @@ import urllib.parse
 from typing import Dict, List, Optional
 
 from markdown2 import Markdown
-from .email_utils import extract_all_pairings_from_emails
-from .api import encrypt_name_with_api, decrypt_with_api
 
+from .api import decrypt_with_api, encrypt_name_with_api
+from .email_utils import extract_all_pairings_from_emails
 from .gmail import Mailer
 
 
@@ -332,8 +333,23 @@ def sanity_check_emails(data_dir: str, people_fname: str):
     sanity_check_pairings(pairings, names)
 
 
+def save_encrypted_pairings(enc_pairings: Dict[str, dict]):
+    logging.debug("Saving encrypted pairings (without receiver name)...")
+    p2 = copy.deepcopy(enc_pairings)
+    for d in p2.values():
+        d.pop("name", None)
+    fname = os.path.join(DATA_OUTPUT_DIR, "encrypted_pairings.json")
+    with open(fname, "w") as fp:
+        json.dump(p2, fp, sort_keys=True, indent=4)
+
+
 def main(people_fname: str, email_fname: str, config_fname: str,
-         live: bool, encrypt: bool) -> None:
+         live: bool, encrypt: bool,
+         random_seed: Optional[int]) -> None:
+    if random_seed is None:
+        random_seed = random.randrange(1, sys.maxsize)
+    random.seed(random_seed)
+    logging.debug("Using random seed %s", random_seed)
     pairings = create_pairings(people_fname)
     if not live:
         logging.warning("Not sending emails since this is a dry run.")
@@ -343,6 +359,7 @@ def main(people_fname: str, email_fname: str, config_fname: str,
     config = read_config(config_fname)
     if encrypt:
         enc_pairings = encrypt_pairings(pairings)
+        save_encrypted_pairings(enc_pairings)
         create_emails(
             pairings=enc_pairings,
             email_template_fname=email_fname,
