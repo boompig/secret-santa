@@ -6,7 +6,7 @@ Run this script to create secret Santa pairings.
 
 Install all packages listed in `requirements.txt` in a virtualenv.
 
-1. create file `config/credentials.json` which contains `email` and `app_password` fields for Gmail.
+1. create file `config/credentials.json` which contains `email`, `password`, and `application_specific_password` fields for Gmail.
 2. create file `config/names.json` whose contents should two keys:
     - `names`: map from names to emails
     - `constraints` (optional): has keys `always` and `never`. Each is a list, where each item is a list of two names

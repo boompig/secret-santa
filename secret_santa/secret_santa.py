@@ -269,7 +269,10 @@ def create_pairings(people_fname: str) -> Dict[str, str]:
     )
     # check...
     for giver in pairings:
+        logging.debug("Checking pairing validity for giver %s...", giver)
         assert giver in people
+        assert giver != pairings[giver], "Giver must never be the same as the receiver"
+    logging.debug("All pairings are sane!")
     return pairings
 
 
