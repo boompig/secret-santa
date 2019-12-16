@@ -82,8 +82,8 @@ def test_secret_santa_search_with_single_always_constraint():
 
     for i in range(10):
         # reset this variable
-        assignments = {}
-        assignments[a] = b
+        pairings = {}
+        pairings[a] = b
 
         # predictable execution
         random.seed(i + 1)
@@ -91,8 +91,9 @@ def test_secret_santa_search_with_single_always_constraint():
         # method modifies this arrays
         g2 = givers[:]
         r2 = receivers[:]
-        assert secret_santa.secret_santa_search(assignments, g2, r2)
-        assert assignments[a] == b
+        assert secret_santa.secret_santa_search(pairings, g2, r2)
+        secret_santa.sanity_check_pairings(pairings, names)
+        assert pairings[a] == b
 
 
 def test_secret_santa_search_with_multiple_always_constraints():
@@ -111,10 +112,10 @@ def test_secret_santa_search_with_multiple_always_constraints():
 
     for i in range(10):
         # reset this variable
-        assignments = {}
-        assignments[a] = b
-        assignments[b] = c
-        assignments[c] = a
+        pairings = {}
+        pairings[a] = b
+        pairings[b] = c
+        pairings[c] = a
 
         # predictable execution
         random.seed(i + 1)
@@ -124,10 +125,12 @@ def test_secret_santa_search_with_multiple_always_constraints():
         random.shuffle(g2)
         r2 = receivers[:]
         random.shuffle(r2)
-        assert secret_santa.secret_santa_search(assignments, g2, r2)
-        assert assignments[a] == b
-        assert assignments[b] == c
-        assert assignments[c] == a
+        assert secret_santa.secret_santa_search(pairings, g2, r2)
+        # does not return anything
+        secret_santa.sanity_check_pairings(pairings, names)
+        assert pairings[a] == b
+        assert pairings[b] == c
+        assert pairings[c] == a
 
 
 def test_secret_santa_hat_with_multiple_always_constraints():
@@ -140,10 +143,12 @@ def test_secret_santa_hat_with_multiple_always_constraints():
         [b, c],
         [c, a]
     ]
-    assignments = secret_santa.secret_santa_hat(names, always_constraints)
-    assert assignments[a] == b
-    assert assignments[b] == c
-    assert assignments[c] == a
+    pairings = secret_santa.secret_santa_hat(names, always_constraints)
+    # does not return anything
+    secret_santa.sanity_check_pairings(pairings, names)
+    assert pairings[a] == b
+    assert pairings[b] == c
+    assert pairings[c] == a
 
 
 def test_get_random_key():

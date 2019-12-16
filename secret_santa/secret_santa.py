@@ -153,13 +153,14 @@ def secret_santa_search(assignments: Dict[str, str],
 
     g = available_givers.pop()
     for r in available_receivers:
-        r2 = available_receivers.copy()
-        r2.remove(r)
-        assignments[g] = r
-        if secret_santa_search(assignments, available_givers, r2):
-            return True
-        else:
-            assignments.pop(g)
+        if r != g:
+            r2 = available_receivers.copy()
+            r2.remove(r)
+            assignments[g] = r
+            if secret_santa_search(assignments, available_givers, r2):
+                return True
+            else:
+                assignments.pop(g)
 
     # restore g to its former position
     available_givers.insert(0, g)
@@ -255,12 +256,7 @@ def create_pairings(people_fname: str) -> Dict[str, str]:
         names,
         always_constraints=constraints.get("always", None)
     )
-    # check...
-    for giver in pairings:
-        logging.debug("Checking pairing validity for giver %s...", giver)
-        assert giver in people
-        assert giver != pairings[giver], "Giver must never be the same as the receiver"
-    logging.debug("All pairings are sane!")
+    sanity_check_pairings(pairings, names)
     return pairings
 
 
@@ -301,18 +297,39 @@ def resend(people_fname: str, email_fname: str, config_fname: str,
     )
 
 
-def sanity_check(data_dir: str):
+def sanity_check_pairings(pairings: Dict[str, str], names: List[str]):
+    """
+    Throws assertion error on failure
+    Warning: this method sorts the names array
+    """
+    names.sort()
+    receivers = list(pairings.values())
+    receivers.sort()
+    givers = list(pairings.keys())
+    givers.sort()
+    assert givers == names, "Givers should be same list as names"
+    assert receivers == names, "Receivers should be same list as names"
+    for giver, receiver in pairings.items():
+        logging.debug("Checking pairing validity for giver %s...", giver)
+        assert giver != receiver, "Giver and receiver cannot be the same"
+        assert giver in names
+        assert receiver in names
+    logging.info("Sanity check complete! Pairings looking good!")
+
+
+def sanity_check_emails(data_dir: str, people_fname: str):
+    """
+    Throws assertion error on failure
+    """
     email_dir = os.path.join(data_dir, "emails")
     pairings = extract_all_pairings_from_emails(email_dir, API_BASE_URL)
     logging.debug("All pairings extracted from emails")
     assert isinstance(pairings, dict)
-    receivers = set(pairings.values())
-    givers = set(pairings.keys())
-    assert receivers == givers, "Givers and Receivers should be the same set"
-    assert len(givers) == len(pairings), "Pairings should not have duplicates"
-    for giver, receiver in pairings.items():
-        assert giver != receiver, "Giver and receiver cannot be the same"
-    logging.info("Sanity check complete! Pairings looking good!")
+    people = read_people(people_fname)
+    names = list(people.keys())
+    assert isinstance(names, list)
+    logging.debug("Successfully read names from config folder")
+    sanity_check_pairings(pairings, names)
 
 
 def main(people_fname: str, email_fname: str, config_fname: str,

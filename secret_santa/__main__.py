@@ -1,6 +1,6 @@
 import logging
 from argparse import ArgumentParser
-from .secret_santa import main, resend, sanity_check, CONFIG_DIR, DATA_OUTPUT_DIR
+from .secret_santa import main, resend, sanity_check_emails, CONFIG_DIR, DATA_OUTPUT_DIR
 import os.path
 import coloredlogs
 
@@ -40,8 +40,9 @@ if __name__ == "__main__":
             resend_to=args.resend
         )
     elif args.sanity_check:
-        sanity_check(
-            data_dir=DATA_OUTPUT_DIR
+        sanity_check_emails(
+            data_dir=DATA_OUTPUT_DIR,
+            people_fname=people_fname,
         )
     else:
         main(
