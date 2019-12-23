@@ -1,12 +1,19 @@
+import copy
+import json
 import logging
 import os.path
+import random
+import sys
 from argparse import ArgumentParser
+from typing import Dict, Optional, List
 
 import coloredlogs
 
-from .secret_santa import (CONFIG_DIR, DATA_OUTPUT_DIR, main, resend,
-                           sanity_check_emails,
-                           sanity_check_encrypted_pairings)
+from .config import CONFIG_DIR, read_config
+from .email_utils import create_emails, sanity_check_emails, send_all_emails
+from .encryption_api import (create_decryption_url, encrypt_pairings,
+                             sanity_check_encrypted_pairings)
+from .secret_santa import DATA_OUTPUT_DIR, create_pairings_from_file, read_people
 
 
 def setup_logging(verbose: bool):
@@ -16,6 +23,71 @@ def setup_logging(verbose: bool):
     for module in ["urllib3"]:
         logging.getLogger(module).setLevel(logging.WARNING)
 
+
+def save_encrypted_pairings(enc_pairings: Dict[str, dict], output_dir: str):
+    logging.debug("Saving encrypted pairings (without receiver name)...")
+    p2 = copy.deepcopy(enc_pairings)
+    for d in p2.values():
+        d.pop("name", None)
+    fname = os.path.join(output_dir, "encrypted_pairings.json")
+    with open(fname, "w") as fp:
+        json.dump(p2, fp, sort_keys=True, indent=4)
+
+
+def main(people_fname: str, email_fname: str, config_fname: str,
+         live: bool, encrypt: bool,
+         random_seed: Optional[int]) -> None:
+    if random_seed is None:
+        random_seed = random.randrange(1, sys.maxsize)
+    assert isinstance(random_seed, int)
+    random.seed(random_seed)
+    logging.debug("Using random seed %s", random_seed)
+    pairings = create_pairings_from_file(people_fname)
+    if not live:
+        logging.warning("Not sending emails since this is a dry run.")
+        print("Pairings:")
+        for i, (g, r) in enumerate(pairings.items()):
+            print(f"\t{i + 1}. {g} -> {r}")
+    config = read_config(config_fname)
+    people = read_people(people_fname)
+    if encrypt:
+        enc_pairings = encrypt_pairings(pairings)
+        save_encrypted_pairings(enc_pairings, output_dir=DATA_OUTPUT_DIR)
+        create_emails(
+            pairings=enc_pairings,
+            email_template_fname=email_fname,
+            output_dir=DATA_OUTPUT_DIR
+        )
+        if live:
+            givers = list(enc_pairings.keys())
+            send_all_emails(
+                givers=givers,
+                emails=people,
+                email_subject=config["email_subject"],
+                output_dir=DATA_OUTPUT_DIR
+            )
+        else:
+            # print the decryption URLs
+            for g, d in enc_pairings.items():
+                url = create_decryption_url(encrypted_msg=d["encrypted_message"], key=d["key"])
+                print(f"Giver = {g}")
+                print(f"Decryption URL = {url}")
+    else:
+        logging.critical("Unencrypted pairings no longer supported")
+        sys.exit(1)
+
+
+def resend(people_fname: str, email_fname: str, config_fname: str,
+           resend_to: List[str]) -> None:
+    assert isinstance(resend_to, list)
+    config = read_config(config_fname)
+    people = read_people(people_fname)
+    send_all_emails(
+        givers=resend_to,
+        emails=people,
+        email_subject=config["email_subject"],
+        output_dir=DATA_OUTPUT_DIR
+    )
 
 if __name__ == "__main__":
     parser = ArgumentParser()
@@ -32,7 +104,7 @@ if __name__ == "__main__":
     parser.add_argument("--sanity-check-emails", action="store_true",
         help="Checks existing emails to verify that the pairings were valid")
     parser.add_argument("-s", "--random-seed", type=int, default=None,
-        help="Random seed to use")
+        help="Random seed to use to generate repeatable pairings")
     args = parser.parse_args()
     setup_logging(args.verbose)
     people_fname = os.path.join(CONFIG_DIR, "names.json")
@@ -48,14 +120,16 @@ if __name__ == "__main__":
             resend_to=args.resend
         )
     elif args.sanity_check:
+        people = read_people(people_fname)
         sanity_check_encrypted_pairings(
             data_dir=DATA_OUTPUT_DIR,
-            people_fname=people_fname,
+            emails=people,
         )
     elif args.sanity_check_emails:
+        people = read_people(people_fname)
         sanity_check_emails(
             data_dir=DATA_OUTPUT_DIR,
-            people_fname=people_fname,
+            emails=people,
         )
     else:
         main(

@@ -1,11 +1,122 @@
+"""
+Send pairings via email
+"""
+
 import logging
 import os
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 from urllib.parse import parse_qs, urlparse
 
 from bs4 import BeautifulSoup
 
-from .api import decrypt_with_api
+from .encryption_api import decrypt_with_api, create_decryption_url, API_BASE_URL
+from .gmail import Mailer
+from .secret_santa import sanity_check_pairings
+from markdown2 import Markdown
+
+
+def sanity_check_emails(data_dir: str, emails: Dict[str, str]):
+    """
+    Throws assertion error on failure
+    """
+    email_dir = os.path.join(data_dir, "emails")
+    pairings = extract_all_pairings_from_emails(email_dir, API_BASE_URL)
+    logging.debug("All pairings extracted from emails")
+    assert isinstance(pairings, dict)
+    names = list(emails.keys())
+    assert isinstance(names, list)
+    logging.debug("Successfully read names from config folder")
+    sanity_check_pairings(pairings, names)
+
+
+def create_emails(pairings: Dict[str, dict],
+                  email_template_fname: str,
+                  output_dir: str) -> None:
+    """
+    Create HTML email text for everyone
+    :param pairings: A dictionary mapping a giver's name to a receiver. The receiver is a dictionary having keys for encryption
+    """
+    for giver in pairings:
+        logging.debug("Creating email body for %s...", giver)
+        key = pairings[giver]["key"]
+        enc_receiver_name = pairings[giver]["encrypted_message"]
+        url = create_decryption_url(
+            key=key,
+            encrypted_msg=enc_receiver_name
+        )
+        email_format = {
+            "giver_name": giver,
+            "link": url
+        }
+        email_body = get_email_text(email_template_fname, email_format, output_dir)
+        email_fname = get_email_fname(giver, output_dir)
+        with open(email_fname, "w") as fp:
+            fp.write(email_body)
+    logging.debug("Created emails for everyone")
+
+
+def get_email_text(format_text_fname: str, fields_dict: dict, output_dir: str) -> str:
+    """Transform the email template with values for each person.
+    Save the final markdown and HTML transformation in output_dir"""
+    markdown_dir = os.path.join(output_dir, "markdown")
+    if not os.path.exists(markdown_dir):
+        # also creates `output_dir` if it doesn't exist
+        os.makedirs(markdown_dir)
+    markdown_fname = os.path.join(
+        markdown_dir,
+        fields_dict["giver_name"].replace(" ", "-") + ".md"
+    )
+    # read template
+    with open(format_text_fname) as fp:
+        contents = fp.read()
+    # fill in template
+    filled_in_template = contents.format(**fields_dict)
+    with open(markdown_fname, "w") as fp:
+        fp.write(filled_in_template)
+    html_dir = os.path.join(output_dir, "html")
+    if not os.path.exists(html_dir):
+        os.mkdir(html_dir)
+    html_fname = os.path.join(
+        html_dir,
+        fields_dict["giver_name"].replace(" ", "-") + ".html"
+    )
+    markdowner = Markdown()
+    html_out = markdowner.convert(filled_in_template)
+    with open(html_fname, "w") as fp:
+        fp.write(html_out)
+    email_text = ""
+    with open(html_fname) as fp:
+        email_text = fp.read()
+    return email_text
+
+
+def send_all_emails(givers: List[str],
+                    emails: Dict[str, str],
+                    email_subject: str,
+                    output_dir: str) -> None:
+    # create email text for each person
+    mailer = Mailer()
+    for giver in givers:
+        logging.info("Sending email to %s...", giver)
+        email_fname = get_email_fname(giver, output_dir=output_dir)
+        with open(email_fname) as fp:
+            email_body = fp.read()
+        assert isinstance(email_body, str)
+        mailer.send_email(email_subject, email_body, emails[giver])
+        logging.info("Sent to %s", giver)
+    mailer.cleanup()
+    logging.debug("Connection closed. All emails sent.")
+
+
+def get_email_fname(giver_name: str, output_dir: str) -> str:
+    email_output_dir = os.path.join(output_dir, "emails")
+    try:
+        os.makedirs(email_output_dir)
+    except Exception:
+        # ignore
+        pass
+    email_fname = os.path.join(email_output_dir, f"{giver_name}.html")
+    return email_fname
 
 
 def extract_all_pairings_from_emails(email_dir: str, api_base_url: str) -> Dict[str, str]:

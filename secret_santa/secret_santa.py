@@ -1,82 +1,14 @@
 from __future__ import print_function
 
-import copy
 import json
 import logging
 import os
 import random
 import sys
-import urllib.parse
 from typing import Dict, List, Optional
 
-from markdown2 import Markdown
-
-from .api import decrypt_with_api, encrypt_name_with_api
-from .email_utils import extract_all_pairings_from_emails
-from .gmail import Mailer
-
-
-def read_config(fname: str) -> dict:
-    try:
-        with open(fname) as fp:
-            return json.load(fp)
-    except Exception:
-        logging.critical("Failed to read config file %s", fname)
-        sys.exit(1)
-
-
-CONFIG_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "config"))
-CONFIG_FNAME = os.path.join(CONFIG_DIR, "config.json")
-CONFIG = read_config(CONFIG_FNAME)
-
-# used to encrypt names
-SITE_URL = f"https://boompig.herokuapp.com/secret-santa/{CONFIG['year']}"
-DEFAULT_API_BASE_URL = "https://boompig.herokuapp.com/secret-santa/api"
-API_BASE_URL = CONFIG.get("API_BASE_URL", DEFAULT_API_BASE_URL)
 
 DATA_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
-
-def get_email_text(format_text_fname: str, fields_dict: dict) -> str:
-    """Transform the email template with values for each person."""
-    markdown_dir = os.path.join(DATA_OUTPUT_DIR, "markdown")
-    if not os.path.exists(markdown_dir):
-        # also makes DATA_OUTPUT_DIR if not exists
-        os.makedirs(markdown_dir)
-    markdown_fname = os.path.join(
-        markdown_dir,
-        fields_dict["giver_name"].replace(" ", "-") + ".md"
-    )
-    # read template
-    with open(format_text_fname) as fp:
-        contents = fp.read()
-    # fill in template
-    filled_in_template = contents.format(**fields_dict)
-    with open(markdown_fname, "w") as fp:
-        fp.write(filled_in_template)
-    html_dir = os.path.join(DATA_OUTPUT_DIR, "html")
-    if not os.path.exists(html_dir):
-        os.mkdir(html_dir)
-    html_fname = os.path.join(
-        html_dir,
-        fields_dict["giver_name"].replace(" ", "-") + ".html"
-    )
-    markdowner = Markdown()
-    html_out = markdowner.convert(filled_in_template)
-    with open(html_fname, "w") as fp:
-        fp.write(html_out)
-    email_text = ""
-    with open(html_fname) as fp:
-        email_text = fp.read()
-    return email_text
-
-
-def read_people(fname: str) -> Dict[str, str]:
-    try:
-        with open(fname) as fp:
-            return json.load(fp)["names"]
-    except FileNotFoundError:
-        logging.critical("Failed to read people from file %s", fname)
-        sys.exit(1)
 
 
 def read_constraints(fname: str) -> Dict[str, list]:
@@ -196,58 +128,16 @@ def secret_santa_hat(names: List[str],
         return assignments
 
 
-def get_email_fname(giver_name: str) -> str:
-    email_output_dir = os.path.join(DATA_OUTPUT_DIR, "emails")
+def read_people(fname: str) -> Dict[str, str]:
     try:
-        os.makedirs(email_output_dir)
-    except Exception:
-        # ignore
-        pass
-    email_fname = os.path.join(email_output_dir, f"{giver_name}.html")
-    return email_fname
+        with open(fname) as fp:
+            return json.load(fp)["names"]
+    except FileNotFoundError:
+        logging.critical("Failed to read people from file %s", fname)
+        sys.exit(1)
 
 
-def send_all_emails(givers: List[str],
-                    email_subject: str,
-                    people_fname: str) -> None:
-    people = read_people(people_fname)
-    # create email text for each person
-    mailer = Mailer()
-    for giver in givers:
-        logging.info("Sending email to %s...", giver)
-        email_fname = get_email_fname(giver)
-        with open(email_fname) as fp:
-            email_body = fp.read()
-        assert isinstance(email_body, str)
-        mailer.send_email(email_subject, email_body, people[giver])
-        logging.info("Sent to %s", giver)
-    mailer.cleanup()
-    logging.debug("Connection closed. All emails sent.")
-
-
-def create_emails(pairings: Dict[str, dict],
-                  email_template_fname: str) -> None:
-    for giver in pairings:
-        logging.debug("Creating email body for %s...", giver)
-        key = pairings[giver]["key"]
-        enc_receiver_name = pairings[giver]["encrypted_message"]
-        url = create_decryption_url(
-            key=key,
-            encrypted_msg=enc_receiver_name
-        )
-        email_format = {
-            "giver_name": giver,
-            "link": url
-        }
-        email_body = get_email_text(email_template_fname, email_format)
-        email_fname = get_email_fname(giver)
-        with open(email_fname, "w") as fp:
-            fp.write(email_body)
-    logging.debug("Created emails for everyone")
-
-
-
-def create_pairings(people_fname: str) -> Dict[str, str]:
+def create_pairings_from_file(people_fname: str) -> Dict[str, str]:
     people = read_people(people_fname)
     assert isinstance(people, dict)
     constraints = read_constraints(people_fname)
@@ -259,43 +149,6 @@ def create_pairings(people_fname: str) -> Dict[str, str]:
     )
     sanity_check_pairings(pairings, names)
     return pairings
-
-
-def encrypt_pairings(pairings: Dict[str, str], api_base_url: str = API_BASE_URL) -> Dict[str, dict]:
-    d = {}
-    for giver, receiver in pairings.items():
-        # create keys
-        key, enc_receiver_name = encrypt_name_with_api(receiver, api_base_url)
-        logging.debug("Checking decryption API gives the correct value for %s...", receiver)
-        r_name = decrypt_with_api(key, enc_receiver_name, api_base_url)
-        assert r_name == receiver
-        d[giver] = {
-            "name": receiver,
-            "key": key,
-            "encrypted_message": enc_receiver_name
-        }
-    return d
-
-
-def create_decryption_url(encrypted_msg: str, key: str) -> str:
-    """:param encrypted_msg:        Receiver's encrypted name
-    """
-    return "{site_url}?name={name}&key={key}".format(
-        site_url=SITE_URL,
-        name=urllib.parse.quote_plus(encrypted_msg),
-        key=urllib.parse.quote_plus(key)
-    )
-
-
-def resend(people_fname: str, email_fname: str, config_fname: str,
-           resend_to: List[str]) -> None:
-    assert isinstance(resend_to, list)
-    config = read_config(config_fname)
-    send_all_emails(
-        givers=resend_to,
-        email_subject=config["email_subject"],
-        people_fname=people_fname
-    )
 
 
 def sanity_check_pairings(pairings: Dict[str, str], names: List[str]):
@@ -316,91 +169,3 @@ def sanity_check_pairings(pairings: Dict[str, str], names: List[str]):
         assert giver in names
         assert receiver in names
     logging.info("Sanity check complete! Pairings looking good!")
-
-
-def sanity_check_encrypted_pairings(data_dir: str, people_fname: str):
-    """
-    Throws assertion error on failure
-    """
-    fname = os.path.join(data_dir, "encrypted_pairings.json")
-    enc_pairings = {}  # type: Dict[str, dict]
-    with open(fname) as fp:
-        enc_pairings = json.load(fp)
-    logging.debug("Read encrypted pairings from disk")
-    pairings = {}  # type: Dict[str, str]
-    for giver, enc_receiver in enc_pairings.items():
-        r = decrypt_with_api(
-            key=enc_receiver["key"],
-            msg=enc_receiver["encrypted_message"],
-            api_base_url=API_BASE_URL
-        )
-        pairings[giver] = r
-    people = read_people(people_fname)
-    names = list(people.keys())
-    assert isinstance(names, list)
-    logging.debug("Successfully read names from config folder")
-    sanity_check_pairings(pairings, names)
-
-
-def sanity_check_emails(data_dir: str, people_fname: str):
-    """
-    Throws assertion error on failure
-    """
-    email_dir = os.path.join(data_dir, "emails")
-    pairings = extract_all_pairings_from_emails(email_dir, API_BASE_URL)
-    logging.debug("All pairings extracted from emails")
-    assert isinstance(pairings, dict)
-    people = read_people(people_fname)
-    names = list(people.keys())
-    assert isinstance(names, list)
-    logging.debug("Successfully read names from config folder")
-    sanity_check_pairings(pairings, names)
-
-
-def save_encrypted_pairings(enc_pairings: Dict[str, dict]):
-    logging.debug("Saving encrypted pairings (without receiver name)...")
-    p2 = copy.deepcopy(enc_pairings)
-    for d in p2.values():
-        d.pop("name", None)
-    fname = os.path.join(DATA_OUTPUT_DIR, "encrypted_pairings.json")
-    with open(fname, "w") as fp:
-        json.dump(p2, fp, sort_keys=True, indent=4)
-
-
-def main(people_fname: str, email_fname: str, config_fname: str,
-         live: bool, encrypt: bool,
-         random_seed: Optional[int]) -> None:
-    if random_seed is None:
-        random_seed = random.randrange(1, sys.maxsize)
-    random.seed(random_seed)
-    logging.debug("Using random seed %s", random_seed)
-    pairings = create_pairings(people_fname)
-    if not live:
-        logging.warning("Not sending emails since this is a dry run.")
-        print("Pairings:")
-        for i, (g, r) in enumerate(pairings.items()):
-            print(f"\t{i + 1}. {g} -> {r}")
-    config = read_config(config_fname)
-    if encrypt:
-        enc_pairings = encrypt_pairings(pairings)
-        save_encrypted_pairings(enc_pairings)
-        create_emails(
-            pairings=enc_pairings,
-            email_template_fname=email_fname,
-        )
-        if live:
-            givers = list(enc_pairings.keys())
-            send_all_emails(
-                givers=givers,
-                people_fname=people_fname,
-                email_subject=config["email_subject"],
-            )
-        else:
-            # print the decryption URLs
-            for g, d in enc_pairings.items():
-                url = create_decryption_url(encrypted_msg=d["encrypted_message"], key=d["key"])
-                print(f"Giver = {g}")
-                print(f"Decryption URL = {url}")
-    else:
-        logging.critical("Unencrypted pairings no longer supported")
-        sys.exit(1)
