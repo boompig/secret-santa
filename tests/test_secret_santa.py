@@ -6,8 +6,6 @@ from unittest.mock import mock_open, patch
 
 from secret_santa import secret_santa
 from secret_santa.crypto_utils import get_random_key
-from secret_santa.email_utils import get_email_text
-from secret_santa.encryption_api import API_BASE_URL, encrypt_name_with_api
 
 
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
@@ -16,6 +14,7 @@ NAMES = {
     "Eru Roraito": "l@deathnote.slav",
     "Misa Amane": "misamisa@deathnote.slav"
 }
+SEED = 42
 
 
 def _get_random_names(num_names: int) -> List[str]:
@@ -35,7 +34,7 @@ def test_get_random_names():
 def test_unique_pairs():
     """Make sure each secret-pair is unique"""
     names = _get_random_names(50)
-    pairs = secret_santa.secret_santa_hat(names)
+    pairs = secret_santa.secret_santa_hat(names, SEED)
     giver_set = set([])
     getter_set = set([])
     for giver, getter in pairs.items():
@@ -48,7 +47,7 @@ def test_unique_pairs():
 def test_not_self():
     """Make sure you never get yourself in secret santa"""
     names = _get_random_names(50)
-    pairs = secret_santa.secret_santa_hat(names)
+    pairs = secret_santa.secret_santa_hat(names, SEED)
     for giver, getter in pairs.items():
         assert giver != getter
 
@@ -57,7 +56,7 @@ def test_all_names_are_givers():
     """Make sure each person is a giver"""
     names = _get_random_names(50)
     orig_name_set = set([name for name in names])
-    pairs = secret_santa.secret_santa_hat(names)
+    pairs = secret_santa.secret_santa_hat(names, SEED)
     giver_name_set = set([giver for giver in pairs])
     assert len(orig_name_set) == len(giver_name_set)
     for a, b in zip(sorted(orig_name_set), sorted(giver_name_set)):
@@ -145,7 +144,7 @@ def test_secret_santa_hat_with_multiple_always_constraints():
         [b, c],
         [c, a]
     ]
-    pairings = secret_santa.secret_santa_hat(names, always_constraints)
+    pairings = secret_santa.secret_santa_hat(names, SEED, always_constraints)
     # does not return anything
     secret_santa.sanity_check_pairings(pairings, names)
     assert pairings[a] == b
@@ -158,27 +157,13 @@ def test_get_random_key():
     assert key[-2:] == b"=="
 
 
-def test_get_email_text():
-    """Make sure can convert markdown into HTML email and all fields are filled out
-    """
-    fname = os.path.join(CONFIG_DIR, "instructions_email.md")
-    people_fname = os.path.join(CONFIG_DIR, "names.json")
-    people_data = json.dumps({"names": NAMES})
-    with patch("builtins.open", mock_open(read_data=people_data)) as mock_file:
-        people = secret_santa.read_people(people_fname)
-        mock_file.assert_called_once()
-    assert os.path.exists(fname)
-    names = list(people.keys())
-    pairs = secret_santa.secret_santa_hat(names)
-    giver = names[0]
-    assert giver in pairs
-    receiver_name = pairs[giver]
-    key = get_random_key()
-    key, enc_receiver_name = encrypt_name_with_api(receiver_name, API_BASE_URL)
-    format_dict = {
-        "giver_name": giver,
-        "link": "sample link here"
-    }
-    email = get_email_text(fname, format_dict, "/tmp")
-    assert email is not None
-    mock_file.assert_called_once()
+def test_secret_santa_hat_simple_with_seed():
+    names = _get_random_names(50)
+    seed = 100
+    random.seed(seed)
+    d1 = secret_santa.secret_santa_hat_simple(names)
+    for i in range(10):
+        random.seed(seed)
+        d2 = secret_santa.secret_santa_hat_simple(names)
+        assert d1 == d2
+

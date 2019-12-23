@@ -101,12 +101,17 @@ def secret_santa_search(assignments: Dict[str, str],
 
 
 def secret_santa_hat(names: List[str],
+                     random_seed: int,
                      always_constraints: Optional[List[list]] = None) -> Dict[str, str]:
     """
     Constraints are expressed with giver first then receiver
     """
     assert isinstance(names, list)
+    assert isinstance(random_seed, int)
+    logging.debug("Using random seed %s", random_seed)
+    random.seed(random_seed)
     if always_constraints is None:
+        logging.debug("Using simple solver")
         return secret_santa_hat_simple(names)
     else:
         assignments = {}
@@ -137,7 +142,10 @@ def read_people(fname: str) -> Dict[str, str]:
         sys.exit(1)
 
 
-def create_pairings_from_file(people_fname: str) -> Dict[str, str]:
+def create_pairings_from_file(people_fname: str,
+                              random_seed: Optional[int] = None) -> Dict[str, str]:
+    if random_seed is None:
+        random_seed = random.randrange(1, sys.maxsize)
     people = read_people(people_fname)
     assert isinstance(people, dict)
     constraints = read_constraints(people_fname)
@@ -145,7 +153,8 @@ def create_pairings_from_file(people_fname: str) -> Dict[str, str]:
     names = list(people.keys())
     pairings = secret_santa_hat(
         names,
-        always_constraints=constraints.get("always", None)
+        always_constraints=constraints.get("always", None),
+        random_seed=random_seed
     )
     sanity_check_pairings(pairings, names)
     return pairings

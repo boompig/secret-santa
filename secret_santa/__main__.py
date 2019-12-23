@@ -2,10 +2,9 @@ import copy
 import json
 import logging
 import os.path
-import random
 import sys
 from argparse import ArgumentParser
-from typing import Dict, Optional, List
+from typing import Dict, List, Optional
 
 import coloredlogs
 
@@ -13,7 +12,8 @@ from .config import CONFIG_DIR, read_config
 from .email_utils import create_emails, sanity_check_emails, send_all_emails
 from .encryption_api import (create_decryption_url, encrypt_pairings,
                              sanity_check_encrypted_pairings)
-from .secret_santa import DATA_OUTPUT_DIR, create_pairings_from_file, read_people
+from .secret_santa import (DATA_OUTPUT_DIR, create_pairings_from_file,
+                           read_people)
 
 
 def setup_logging(verbose: bool):
@@ -37,12 +37,7 @@ def save_encrypted_pairings(enc_pairings: Dict[str, dict], output_dir: str):
 def main(people_fname: str, email_fname: str, config_fname: str,
          live: bool, encrypt: bool,
          random_seed: Optional[int]) -> None:
-    if random_seed is None:
-        random_seed = random.randrange(1, sys.maxsize)
-    assert isinstance(random_seed, int)
-    random.seed(random_seed)
-    logging.debug("Using random seed %s", random_seed)
-    pairings = create_pairings_from_file(people_fname)
+    pairings = create_pairings_from_file(people_fname, random_seed=random_seed)
     if not live:
         logging.warning("Not sending emails since this is a dry run.")
         print("Pairings:")
