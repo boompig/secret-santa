@@ -1,12 +1,11 @@
 import json
 import os
-from unittest.mock import mock_open, patch
+from unittest.mock import MagicMock
 
 from secret_santa import secret_santa
 from secret_santa.config import CONFIG_DIR
-from secret_santa.crypto_utils import get_random_key
-from secret_santa.email_utils import get_email_text
-from secret_santa.encryption_api import API_BASE_URL, encrypt_name_with_api
+from secret_santa.email_utils import (create_emails, get_email_fname,
+                                      get_email_text, send_all_emails)
 
 NAMES = {
     "Light Yagami": "kira@deathnote.slav",
@@ -14,29 +13,61 @@ NAMES = {
     "Misa Amane": "misamisa@deathnote.slav"
 }
 SEED = 42
+DIR = os.path.dirname(__file__)
+EMAIL_TEMPLATE_FNAME = os.path.join(DIR, "instructions_email.md")
 
 
 def test_get_email_text():
     """Make sure can convert markdown into HTML email and all fields are filled out
     """
-    fname = os.path.join(CONFIG_DIR, "instructions_email.md")
-    people_fname = os.path.join(CONFIG_DIR, "names.json")
-    people_data = json.dumps({"names": NAMES})
-    with patch("builtins.open", mock_open(read_data=people_data)) as mock_file:
-        people = secret_santa.read_people(people_fname)
-        mock_file.assert_called_once()
-    assert os.path.exists(fname)
-    names = list(people.keys())
-    pairs = secret_santa.secret_santa_hat(names, random_seed=SEED)
+    names = list(NAMES.keys())
+    pairings = secret_santa.secret_santa_hat(names, random_seed=SEED)
     giver = names[0]
-    assert giver in pairs
-    receiver_name = pairs[giver]
-    key = get_random_key()
-    key, enc_receiver_name = encrypt_name_with_api(receiver_name, API_BASE_URL)
-    format_dict = {
-        "giver_name": giver,
-        "link": "sample link here"
-    }
-    email = get_email_text(fname, format_dict, "/tmp")
-    assert email is not None
-    mock_file.assert_called_once()
+    for giver, receiver in pairings.items():
+        format_dict = {
+            "giver_name": giver,
+            "receiver_name": receiver
+        }
+        email = get_email_text(EMAIL_TEMPLATE_FNAME, format_dict, "/tmp")
+        assert giver in email
+        assert receiver in email
+
+
+def test_create_emails_unencrypted():
+    givers = list(NAMES.keys())
+    pairings = secret_santa.secret_santa_hat(givers, random_seed=SEED)
+    assert isinstance(pairings, dict)
+    assert len(pairings) == len(NAMES)
+    assert sorted(list(pairings.keys())) == sorted(givers)
+    create_emails(
+        pairings,
+        email_template_fname=EMAIL_TEMPLATE_FNAME,
+        output_dir="/tmp"
+    )
+
+
+def test_send_all_emails():
+    givers = list(NAMES.keys())
+    emails = NAMES.copy()
+    mailer = MagicMock()
+    email_subject = "Secret Santa 2049"
+    output_dir = "/tmp"
+    email_contents = {}
+    for name in givers:
+        fname = get_email_fname(name, output_dir)
+        email_contents[name] = f"Hello, {name}."
+        with open(fname, "w") as fp:
+            fp.write(email_contents[name])
+    send_all_emails(
+        givers,
+        emails,
+        email_subject=email_subject,
+        output_dir="/tmp",
+        mailer=mailer
+    )
+    for name, email in NAMES.items():
+        mailer.send_email.assert_any_call(
+            email_subject,
+            email_contents[name],
+            email
+        )

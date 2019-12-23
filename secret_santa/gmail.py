@@ -4,7 +4,6 @@ from email.mime.text import MIMEText
 import json
 import os
 import logging
-import sys
 from typing import Optional
 
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
@@ -62,7 +61,7 @@ def read_credentials(fname: str) -> dict:
             return json.load(fp)
     except Exception:
         logging.critical("Gmail credentials file %s does not exist", fname)
-        sys.exit(1)
+        raise SystemExit
 
 
 def send_secret_santa_email(subject: str, message_body: str, to_addr: str) -> None:

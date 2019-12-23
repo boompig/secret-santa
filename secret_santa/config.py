@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import sys
 
 
 def read_config(fname: str) -> dict:
@@ -10,7 +9,7 @@ def read_config(fname: str) -> dict:
             return json.load(fp)
     except Exception:
         logging.critical("Failed to read config file %s", fname)
-        sys.exit(1)
+        raise SystemExit
 
 
 CONFIG_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "config"))

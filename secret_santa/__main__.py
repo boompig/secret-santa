@@ -15,7 +15,10 @@ from .encryption_api import (
     encrypt_pairings,
     sanity_check_encrypted_pairings,
 )
-from .secret_santa import DATA_OUTPUT_DIR, create_pairings_from_file, read_people
+from .secret_santa import create_pairings_from_file, read_people
+
+
+DATA_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 
 
 def setup_logging(verbose: bool):

@@ -2,13 +2,9 @@ from __future__ import print_function
 
 import json
 import logging
-import os
 import random
 import sys
 from typing import Dict, List, Optional
-
-
-DATA_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
 
 
 def read_constraints(fname: str) -> Dict[str, list]:

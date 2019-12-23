@@ -4,7 +4,7 @@ Send pairings via email
 
 import logging
 import os
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Optional, Any
 from urllib.parse import parse_qs, urlparse
 
 from bs4 import BeautifulSoup
@@ -30,18 +30,24 @@ def sanity_check_emails(data_dir: str, emails: Dict[str, str]):
 
 
 def create_emails(
-    pairings: Dict[str, dict], email_template_fname: str, output_dir: str
+    pairings: Dict[str, Any], email_template_fname: str, output_dir: str
 ) -> None:
     """
-    Create HTML email text for everyone
-    :param pairings: A dictionary mapping a giver's name to a receiver. The receiver is a dictionary having keys for encryption
+    Create HTML email text for everyone and write it to `output_dir`
+    :param pairings: Either encrypted or unencrypted pairings.
+        If encrypted, values should be dictionaries with `key` and `encrypted_message` keys
     """
     for giver in pairings:
         logging.debug("Creating email body for %s...", giver)
-        key = pairings[giver]["key"]
-        enc_receiver_name = pairings[giver]["encrypted_message"]
-        url = create_decryption_url(key=key, encrypted_msg=enc_receiver_name)
-        email_format = {"giver_name": giver, "link": url}
+        if isinstance(pairings[giver], dict):
+            key = pairings[giver]["key"]
+            enc_receiver_name = pairings[giver]["encrypted_message"]
+            url = create_decryption_url(key=key, encrypted_msg=enc_receiver_name)
+            email_format = {"giver_name": giver, "link": url}
+        else:
+            assert isinstance(pairings[giver], str)
+            receiver_name = pairings[giver]
+            email_format = {"giver_name": giver, "receiver_name": receiver_name}
         email_body = get_email_text(email_template_fname, email_format, output_dir)
         email_fname = get_email_fname(giver, output_dir)
         with open(email_fname, "w") as fp:
@@ -51,7 +57,8 @@ def create_emails(
 
 def get_email_text(format_text_fname: str, fields_dict: dict, output_dir: str) -> str:
     """Transform the email template with values for each person.
-    Save the final markdown and HTML transformation in output_dir"""
+    Save the final markdown and HTML transformation in `output_dir`
+    Also return the email text"""
     markdown_dir = os.path.join(output_dir, "markdown")
     if not os.path.exists(markdown_dir):
         # also creates `output_dir` if it doesn't exist
@@ -83,10 +90,18 @@ def get_email_text(format_text_fname: str, fields_dict: dict, output_dir: str) -
 
 
 def send_all_emails(
-    givers: List[str], emails: Dict[str, str], email_subject: str, output_dir: str
+    givers: List[str],
+    emails: Dict[str, str],
+    email_subject: str,
+    output_dir: str,
+    mailer: Optional[Mailer] = None,
 ) -> None:
-    # create email text for each person
-    mailer = Mailer()
+    """
+    Send an email to each person. Assume email text already exists in `output_dir`
+    """
+    assert isinstance(givers, list)
+    if mailer is None:
+        mailer = Mailer()
     for giver in givers:
         logging.info("Sending email to %s...", giver)
         email_fname = get_email_fname(giver, output_dir=output_dir)
