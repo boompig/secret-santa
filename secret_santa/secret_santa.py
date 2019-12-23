@@ -62,9 +62,11 @@ def secret_santa_hat_simple(names: List[str]) -> Dict[str, str]:
     return d
 
 
-def secret_santa_search(assignments: Dict[str, str],
-                        available_givers: List[str],
-                        available_receivers: List[str]) -> bool:
+def secret_santa_search(
+    assignments: Dict[str, str],
+    available_givers: List[str],
+    available_receivers: List[str],
+) -> bool:
     """
     This is an implementation of secret santa as a search program.
     This implementation support pre-existing assignments, just make sure to set other variables correctly
@@ -74,9 +76,11 @@ def secret_santa_search(assignments: Dict[str, str],
     assert isinstance(available_givers, list)
     assert isinstance(available_receivers, list)
 
-    if (len(available_givers) == 1 and
-        len(available_receivers) == 1 and
-        available_givers[0] == available_receivers[0]):
+    if (
+        len(available_givers) == 1
+        and len(available_receivers) == 1
+        and available_givers[0] == available_receivers[0]
+    ):
         # failed to create a full assignment
         return False
 
@@ -100,9 +104,9 @@ def secret_santa_search(assignments: Dict[str, str],
     return False
 
 
-def secret_santa_hat(names: List[str],
-                     random_seed: int,
-                     always_constraints: Optional[List[list]] = None) -> Dict[str, str]:
+def secret_santa_hat(
+    names: List[str], random_seed: int, always_constraints: Optional[List[list]] = None
+) -> Dict[str, str]:
     """
     Constraints are expressed with giver first then receiver
     """
@@ -119,7 +123,9 @@ def secret_santa_hat(names: List[str],
         receivers = set(names)
         # fix the always constraints
         for item in always_constraints:
-            assert len(item) == 2, "always constraint must be expressed as a list of lists with each element having 2 items"
+            assert (
+                len(item) == 2
+            ), "always constraint must be expressed as a list of lists with each element having 2 items"
             giver, receiver = item
             assignments[giver] = receiver
             givers.remove(giver)
@@ -142,8 +148,9 @@ def read_people(fname: str) -> Dict[str, str]:
         sys.exit(1)
 
 
-def create_pairings_from_file(people_fname: str,
-                              random_seed: Optional[int] = None) -> Dict[str, str]:
+def create_pairings_from_file(
+    people_fname: str, random_seed: Optional[int] = None
+) -> Dict[str, str]:
     if random_seed is None:
         random_seed = random.randrange(1, sys.maxsize)
     people = read_people(people_fname)
@@ -154,7 +161,7 @@ def create_pairings_from_file(people_fname: str,
     pairings = secret_santa_hat(
         names,
         always_constraints=constraints.get("always", None),
-        random_seed=random_seed
+        random_seed=random_seed,
     )
     sanity_check_pairings(pairings, names)
     return pairings

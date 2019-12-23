@@ -8,5 +8,5 @@ __all__ = [
     "Mailer",
     "secret_santa_hat",
     "secret_santa_hat_simple",
-    "secret_santa_search"
+    "secret_santa_search",
 ]

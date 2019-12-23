@@ -29,9 +29,9 @@ def sanity_check_emails(data_dir: str, emails: Dict[str, str]):
     sanity_check_pairings(pairings, names)
 
 
-def create_emails(pairings: Dict[str, dict],
-                  email_template_fname: str,
-                  output_dir: str) -> None:
+def create_emails(
+    pairings: Dict[str, dict], email_template_fname: str, output_dir: str
+) -> None:
     """
     Create HTML email text for everyone
     :param pairings: A dictionary mapping a giver's name to a receiver. The receiver is a dictionary having keys for encryption
@@ -40,14 +40,8 @@ def create_emails(pairings: Dict[str, dict],
         logging.debug("Creating email body for %s...", giver)
         key = pairings[giver]["key"]
         enc_receiver_name = pairings[giver]["encrypted_message"]
-        url = create_decryption_url(
-            key=key,
-            encrypted_msg=enc_receiver_name
-        )
-        email_format = {
-            "giver_name": giver,
-            "link": url
-        }
+        url = create_decryption_url(key=key, encrypted_msg=enc_receiver_name)
+        email_format = {"giver_name": giver, "link": url}
         email_body = get_email_text(email_template_fname, email_format, output_dir)
         email_fname = get_email_fname(giver, output_dir)
         with open(email_fname, "w") as fp:
@@ -63,8 +57,7 @@ def get_email_text(format_text_fname: str, fields_dict: dict, output_dir: str) -
         # also creates `output_dir` if it doesn't exist
         os.makedirs(markdown_dir)
     markdown_fname = os.path.join(
-        markdown_dir,
-        fields_dict["giver_name"].replace(" ", "-") + ".md"
+        markdown_dir, fields_dict["giver_name"].replace(" ", "-") + ".md"
     )
     # read template
     with open(format_text_fname) as fp:
@@ -77,8 +70,7 @@ def get_email_text(format_text_fname: str, fields_dict: dict, output_dir: str) -
     if not os.path.exists(html_dir):
         os.mkdir(html_dir)
     html_fname = os.path.join(
-        html_dir,
-        fields_dict["giver_name"].replace(" ", "-") + ".html"
+        html_dir, fields_dict["giver_name"].replace(" ", "-") + ".html"
     )
     markdowner = Markdown()
     html_out = markdowner.convert(filled_in_template)
@@ -90,10 +82,9 @@ def get_email_text(format_text_fname: str, fields_dict: dict, output_dir: str) -
     return email_text
 
 
-def send_all_emails(givers: List[str],
-                    emails: Dict[str, str],
-                    email_subject: str,
-                    output_dir: str) -> None:
+def send_all_emails(
+    givers: List[str], emails: Dict[str, str], email_subject: str, output_dir: str
+) -> None:
     # create email text for each person
     mailer = Mailer()
     for giver in givers:
@@ -119,7 +110,9 @@ def get_email_fname(giver_name: str, output_dir: str) -> str:
     return email_fname
 
 
-def extract_all_pairings_from_emails(email_dir: str, api_base_url: str) -> Dict[str, str]:
+def extract_all_pairings_from_emails(
+    email_dir: str, api_base_url: str
+) -> Dict[str, str]:
     pairings = {}  # type: Dict[str, str]
     for fname in os.listdir(email_dir):
         if fname.endswith(".html"):
@@ -148,10 +141,7 @@ def extract_all_enc_pairings_from_emails(email_dir: str) -> Dict[str, dict]:
             path = os.path.join(email_dir, fname)
             giver, enc_msg, key = extract_enc_pairing_from_email(path)
             assert giver not in enc_pairings
-            enc_pairings[giver] = {
-                "encrypted_message": enc_msg,
-                "key": key
-            }
+            enc_pairings[giver] = {"encrypted_message": enc_msg, "key": key}
     return enc_pairings
 
 

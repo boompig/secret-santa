@@ -24,14 +24,14 @@ API_BASE_URL = CONFIG.get("API_BASE_URL", DEFAULT_API_BASE_URL)
 
 def encrypt_name_with_api(name: str, api_base_url: str) -> Tuple[str, str]:
     enc_url = api_base_url + "/encrypt"
-    response = requests.post(enc_url, { "name": name })
+    response = requests.post(enc_url, {"name": name})
     r_json = response.json()
     return r_json["key"], r_json["msg"]
 
 
 def decrypt_with_api(key: str, msg: str, api_base_url: str) -> str:
     dec_url = api_base_url + "/decrypt"
-    response = requests.post(dec_url, { "key": key, "ciphertext": msg })
+    response = requests.post(dec_url, {"key": key, "ciphertext": msg})
     r_json = response.json()
     return r_json["name"]
 
@@ -42,22 +42,26 @@ def create_decryption_url(encrypted_msg: str, key: str) -> str:
     return "{site_url}?name={name}&key={key}".format(
         site_url=SITE_URL,
         name=urllib.parse.quote_plus(encrypted_msg),
-        key=urllib.parse.quote_plus(key)
+        key=urllib.parse.quote_plus(key),
     )
 
 
-def encrypt_pairings(pairings: Dict[str, str], api_base_url: str = API_BASE_URL) -> Dict[str, dict]:
+def encrypt_pairings(
+    pairings: Dict[str, str], api_base_url: str = API_BASE_URL
+) -> Dict[str, dict]:
     d = {}
     for giver, receiver in pairings.items():
         # create keys
         key, enc_receiver_name = encrypt_name_with_api(receiver, api_base_url)
-        logging.debug("Checking decryption API gives the correct value for %s...", receiver)
+        logging.debug(
+            "Checking decryption API gives the correct value for %s...", receiver
+        )
         r_name = decrypt_with_api(key, enc_receiver_name, api_base_url)
         assert r_name == receiver
         d[giver] = {
             "name": receiver,
             "key": key,
-            "encrypted_message": enc_receiver_name
+            "encrypted_message": enc_receiver_name,
         }
     return d
 
@@ -76,7 +80,7 @@ def sanity_check_encrypted_pairings(data_dir: str, emails: Dict[str, str]):
         r = decrypt_with_api(
             key=enc_receiver["key"],
             msg=enc_receiver["encrypted_message"],
-            api_base_url=API_BASE_URL
+            api_base_url=API_BASE_URL,
         )
         pairings[giver] = r
     names = list(emails.keys())

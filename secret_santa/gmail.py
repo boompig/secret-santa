@@ -13,6 +13,7 @@ CREDENTIALS_FNAME = os.path.join(CONFIG_DIR, "credentials.json")
 
 class Mailer:
     """Use this in a future version to reuse the SMTP connection"""
+
     def __init__(self) -> None:
         # only read credentials once from disk
         self._credentials = read_credentials(CREDENTIALS_FNAME)
@@ -29,7 +30,10 @@ class Mailer:
             logging.debug("Starting TLS...")
             self._server.starttls()
             logging.debug("Logging into Gmail...")
-            self._server.login(self._credentials["email"], self._credentials["application_specific_password"])
+            self._server.login(
+                self._credentials["email"],
+                self._credentials["application_specific_password"],
+            )
         return self._server
 
     def send_email(self, subject: str, message_body: str, to_addr: str) -> None:
@@ -74,7 +78,7 @@ def send_secret_santa_email(subject: str, message_body: str, to_addr: str) -> No
     gmail_credentials = {
         "username": credentials["email"],
         # application-specific password
-        "password": credentials["application_specific_password"]
+        "password": credentials["application_specific_password"],
     }
     mime_msg = MIMEText(message_body, "html")
     msg.attach(mime_msg)
