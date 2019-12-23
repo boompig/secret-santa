@@ -9,7 +9,7 @@ import logging
 import os
 import urllib.parse
 from datetime import datetime
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
 import requests
 
@@ -66,10 +66,14 @@ def encrypt_pairings(
     return d
 
 
-def sanity_check_encrypted_pairings(data_dir: str, emails: Dict[str, str]):
+def sanity_check_encrypted_pairings(
+    data_dir: str, names: List[str], api_base_url: str = API_BASE_URL
+) -> None:
     """
+    Sanity check the saved encrypted pairings file
     Throws assertion error on failure
     """
+    assert isinstance(names, list)
     fname = os.path.join(data_dir, "encrypted_pairings.json")
     enc_pairings = {}  # type: Dict[str, dict]
     with open(fname) as fp:
@@ -80,10 +84,7 @@ def sanity_check_encrypted_pairings(data_dir: str, emails: Dict[str, str]):
         r = decrypt_with_api(
             key=enc_receiver["key"],
             msg=enc_receiver["encrypted_message"],
-            api_base_url=API_BASE_URL,
+            api_base_url=api_base_url,
         )
         pairings[giver] = r
-    names = list(emails.keys())
-    assert isinstance(names, list)
-    logging.debug("Successfully read names from config folder")
     sanity_check_pairings(pairings, names)

@@ -153,7 +153,7 @@ if __name__ == "__main__":
     elif args.sanity_check:
         people = read_people(people_fname)
         sanity_check_encrypted_pairings(
-            data_dir=DATA_OUTPUT_DIR, emails=people,
+            data_dir=DATA_OUTPUT_DIR, names=list(people.keys()),
         )
     elif args.sanity_check_emails:
         people = read_people(people_fname)
