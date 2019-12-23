@@ -4,9 +4,10 @@ import random
 from typing import List
 from unittest.mock import mock_open, patch
 
+import pytest
+
 from secret_santa import secret_santa
 from secret_santa.crypto_utils import get_random_key
-
 
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
 NAMES = {
@@ -167,3 +168,13 @@ def test_secret_santa_hat_simple_with_seed():
         d2 = secret_santa.secret_santa_hat_simple(names)
         assert d1 == d2
 
+
+def test_sanity_check_pairings_fail_double_receiver():
+    pairings = {
+        "Alice": "Eve",
+        "Bob": "Eve",
+        "Eve": "Bob"
+    }
+    names = ["Alice", "Bob", "Eve"]
+    with pytest.raises(AssertionError):
+        secret_santa.sanity_check_pairings(pairings, names)

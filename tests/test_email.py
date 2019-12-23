@@ -1,5 +1,6 @@
 import json
 import os
+import tempfile
 from unittest.mock import MagicMock
 
 from secret_santa import secret_santa
@@ -23,14 +24,15 @@ def test_get_email_text():
     names = list(NAMES.keys())
     pairings = secret_santa.secret_santa_hat(names, random_seed=SEED)
     giver = names[0]
-    for giver, receiver in pairings.items():
-        format_dict = {
-            "giver_name": giver,
-            "receiver_name": receiver
-        }
-        email = get_email_text(EMAIL_TEMPLATE_FNAME, format_dict, "/tmp")
-        assert giver in email
-        assert receiver in email
+    with tempfile.TemporaryDirectory() as output_dir:
+        for giver, receiver in pairings.items():
+            format_dict = {
+                "giver_name": giver,
+                "receiver_name": receiver
+            }
+            email = get_email_text(EMAIL_TEMPLATE_FNAME, format_dict, output_dir)
+            assert giver in email
+            assert receiver in email
 
 
 def test_create_emails_unencrypted():
@@ -39,11 +41,12 @@ def test_create_emails_unencrypted():
     assert isinstance(pairings, dict)
     assert len(pairings) == len(NAMES)
     assert sorted(list(pairings.keys())) == sorted(givers)
-    create_emails(
-        pairings,
-        email_template_fname=EMAIL_TEMPLATE_FNAME,
-        output_dir="/tmp"
-    )
+    with tempfile.TemporaryDirectory() as output_dir:
+        create_emails(
+            pairings,
+            email_template_fname=EMAIL_TEMPLATE_FNAME,
+            output_dir=output_dir
+        )
 
 
 def test_send_all_emails():
@@ -51,23 +54,23 @@ def test_send_all_emails():
     emails = NAMES.copy()
     mailer = MagicMock()
     email_subject = "Secret Santa 2049"
-    output_dir = "/tmp"
-    email_contents = {}
-    for name in givers:
-        fname = get_email_fname(name, output_dir)
-        email_contents[name] = f"Hello, {name}."
-        with open(fname, "w") as fp:
-            fp.write(email_contents[name])
-    send_all_emails(
-        givers,
-        emails,
-        email_subject=email_subject,
-        output_dir="/tmp",
-        mailer=mailer
-    )
-    for name, email in NAMES.items():
-        mailer.send_email.assert_any_call(
-            email_subject,
-            email_contents[name],
-            email
+    with tempfile.TemporaryDirectory() as output_dir:
+        email_contents = {}
+        for name in givers:
+            fname = get_email_fname(name, output_dir)
+            email_contents[name] = f"Hello, {name}."
+            with open(fname, "w") as fp:
+                fp.write(email_contents[name])
+        send_all_emails(
+            givers,
+            emails,
+            email_subject=email_subject,
+            output_dir=output_dir,
+            mailer=mailer
         )
+        for name, email in NAMES.items():
+            mailer.send_email.assert_any_call(
+                email_subject,
+                email_contents[name],
+                email
+            )

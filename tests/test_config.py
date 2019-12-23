@@ -5,4 +5,4 @@ from secret_santa import config
 
 def test_no_config_file():
     with pytest.raises(SystemExit):
-        config.read_config("/tmp/foo.json")
+        config.read_config("/fake/foo.json")

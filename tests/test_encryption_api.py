@@ -1,6 +1,9 @@
 import json
+import tempfile
 from typing import Dict, Tuple
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, mock_open, patch
+
+import pytest
 
 from secret_santa import secret_santa
 from secret_santa.encryption_api import (SITE_URL, create_decryption_url,
@@ -60,7 +63,8 @@ def test_create_decryption_url():
     assert url.startswith(SITE_URL)
 
 
-def test_sanity_check_encrypted_pairings():
+def test_sanity_check_encrypted_pairings_pass():
+    # under regular conditions no assertions should be triggered
     names = _get_random_names(50)
     assert isinstance(names, list)
     assert len(names) == 50
@@ -70,13 +74,37 @@ def test_sanity_check_encrypted_pairings():
     assert len(enc_pairings) == len(pairings)
     s = json.dumps(enc_pairings, indent=4)
     assert isinstance(s, str)
-    # print(s)
 
     m_dec = MagicMock(side_effect=fake_decrypt)
-    with patch("secret_santa.encryption_api.decrypt_with_api", m_dec):
-        with patch("builtins.open", mock_open(read_data=s)):
-            sanity_check_encrypted_pairings("/tmp", names, API_BASE_URL)
+    with tempfile.TemporaryDirectory() as output_dir:
+        with patch("secret_santa.encryption_api.decrypt_with_api", m_dec):
+            with patch("builtins.open", mock_open(read_data=s)):
+                sanity_check_encrypted_pairings(output_dir, names, API_BASE_URL)
 
     for name in names:
         key, msg = fake_encrypt(name, API_BASE_URL)
         m_dec.assert_any_call(key=key, msg=msg, api_base_url=API_BASE_URL)
+
+
+def test_sanity_check_encrypted_pairings_fail_double_receiver():
+    # should trigger assertion error when something bad happens
+    names = [
+        "Alice", "Bob", "Eve"
+    ]
+    pairings = {
+        "Alice": "Eve",
+        "Bob": "Eve",
+        "Eve": "Bob"
+    }
+    enc_pairings = fake_encrypt_pairings(pairings)
+    assert isinstance(enc_pairings, dict)
+    assert len(enc_pairings) == len(pairings)
+    s = json.dumps(enc_pairings, indent=4)
+    assert isinstance(s, str)
+
+    m_dec = MagicMock(side_effect=fake_decrypt)
+    with tempfile.TemporaryDirectory() as output_dir:
+        with pytest.raises(AssertionError):
+            with patch("secret_santa.encryption_api.decrypt_with_api", m_dec):
+                with patch("builtins.open", mock_open(read_data=s)):
+                    sanity_check_encrypted_pairings(output_dir, names, API_BASE_URL)
