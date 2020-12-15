@@ -2,7 +2,6 @@ import copy
 import json
 import logging
 import os.path
-import sys
 from argparse import ArgumentParser
 from typing import Dict, List, Optional
 
@@ -16,16 +15,19 @@ from .encryption_api import (
     sanity_check_encrypted_pairings,
 )
 from .secret_santa import create_pairings_from_file, read_people
+from .sms_utils import send_all_sms_messages, create_text_messages
 
 
-DATA_OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+DATA_OUTPUT_DIR = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "data")
+)
 
 
 def setup_logging(verbose: bool):
     log_level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(level=log_level)
     coloredlogs.install(level=log_level)
-    for module in ["urllib3"]:
+    for module in ["urllib3", "botocore"]:
         logging.getLogger(module).setLevel(logging.WARNING)
 
 
@@ -41,10 +43,21 @@ def save_encrypted_pairings(enc_pairings: Dict[str, dict], output_dir: str):
         json.dump(p2, fp, sort_keys=True, indent=4)
 
 
+def save_unencrypted_pairings(pairings: Dict[str, str], output_dir: str):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    fname = os.path.join(output_dir, "unencrypted_pairings.json")
+    with open(fname, "w") as fp:
+        json.dump(pairings, fp, sort_keys=True, indent=4)
+    logging.debug("Saved unencrypted pairings to disk")
+
+
 def main(
     people_fname: str,
     email_fname: str,
+    sms_fname: str,
     config_fname: str,
+    aws_config_fname: str,
     output_dir: str,
     live: bool,
     encrypt: bool,
@@ -79,9 +92,14 @@ def main(
         )
         if live:
             givers = list(enc_pairings.keys())
+            # get the emails
+            emails = {}  # type: Dict[str, str]
+            for name, item in people.items():
+                assert "email" in item
+                emails[name] = item["email"]
             send_all_emails(
                 givers=givers,
-                emails=people,
+                emails=emails,
                 email_subject=config["email_subject"],
                 output_dir=output_dir,
             )
@@ -96,8 +114,16 @@ def main(
             logging.debug("Email subject would have been '%s'", config["email_subject"])
             logging.warning("Not sending emails since this is a dry run.")
     else:
-        logging.critical("Unencrypted pairings no longer supported")
-        sys.exit(1)
+        save_unencrypted_pairings(pairings, output_dir)
+        create_text_messages(
+            pairings=pairings, template_file=sms_fname, output_dir=output_dir
+        )
+        send_all_sms_messages(
+            people=people,
+            output_dir=output_dir,
+            is_live=live,
+            aws_config_fname=aws_config_fname,
+        )
 
 
 def resend(
@@ -110,9 +136,13 @@ def resend(
     assert isinstance(resend_to, list)
     config = read_config(config_fname)
     people = read_people(people_fname)
+    emails = {}  # type: Dict[str, str]
+    for name, item in people.items():
+        assert "email" in item
+        emails[name] = item["email"]
     send_all_emails(
         givers=resend_to,
-        emails=people,
+        emails=emails,
         email_subject=config["email_subject"],
         output_dir=output_dir,
     )
@@ -172,6 +202,8 @@ if __name__ == "__main__":
     people_fname = os.path.join(CONFIG_DIR, "names.json")
     email_fname = os.path.join(CONFIG_DIR, "instructions_email.md")
     config_fname = os.path.join(CONFIG_DIR, "config.json")
+    sms_fname = os.path.join(CONFIG_DIR, "sms_template.jinja2")
+    aws_config_fname = os.path.join(CONFIG_DIR, "aws.json")
     assert os.path.exists(people_fname), f"file {people_fname} does not exist"
     assert os.path.exists(email_fname), f"file {email_fname} does not exist"
     logging.debug("Using output directory %s", args.output_dir)
@@ -191,15 +223,21 @@ if __name__ == "__main__":
         )
     elif args.sanity_check_emails:
         people = read_people(people_fname)
+        emails = {}
+        for name, item in people.items():
+            assert "email" in item
+            emails[name] = item["email"]
         sanity_check_emails(
             data_dir=args.output_dir,
-            emails=people,
+            emails=emails,
         )
     else:
         main(
             email_fname=email_fname,
+            sms_fname=sms_fname,
             people_fname=people_fname,
             config_fname=config_fname,
+            aws_config_fname=aws_config_fname,
             output_dir=args.output_dir,
             live=args.live,
             encrypt=args.encrypt,

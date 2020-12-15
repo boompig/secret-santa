@@ -65,7 +65,7 @@ def secret_santa_search(
 ) -> bool:
     """
     This is an implementation of secret santa as a search program.
-    This implementation support pre-existing assignments, just make sure to set other variables correctly
+    This implementation supports pre-existing assignments, just make sure to set other variables correctly
     To support fully random assignments, both arrays should be shuffled prior to running this method
     warning: in-place modification of assignments"""
     assert isinstance(assignments, dict)
@@ -100,21 +100,41 @@ def secret_santa_search(
     return False
 
 
+def check_never_constraints(
+    assignments: Dict[str, str], never_constraints: List[list]
+) -> bool:
+    """
+    Return true iff the never constraints are all satisfied
+    :param never_constraints: List of lists, where each item has 2 values: giver and receiver
+    """
+    for pair in never_constraints:
+        assert len(pair) == 2
+        giver, bad_receiver = pair
+        assert giver in assignments, f"giver {giver} must be in assignments"
+        if assignments[giver] == bad_receiver:
+            return False
+    return True
+
+
 def secret_santa_hat(
-    names: List[str], random_seed: int, always_constraints: Optional[List[list]] = None
+    names: List[str],
+    random_seed: int,
+    always_constraints: Optional[List[list]] = None,
+    never_constraints: Optional[List[list]] = None,
 ) -> Dict[str, str]:
     """
     Constraints are expressed with giver first then receiver
     """
     assert isinstance(names, list)
     assert isinstance(random_seed, int)
+    logging.debug("Generating new pairings...")
     logging.debug("Using random seed %s", random_seed)
     random.seed(random_seed)
+    base_assignments = {}
     if always_constraints is None:
         logging.debug("Using simple solver")
         return secret_santa_hat_simple(names)
     else:
-        assignments = {}
         givers = set(names)
         receivers = set(names)
         # fix the always constraints
@@ -123,19 +143,43 @@ def secret_santa_hat(
                 len(item) == 2
             ), "always constraint must be expressed as a list of lists with each element having 2 items"
             giver, receiver = item
-            assignments[giver] = receiver
+            base_assignments[giver] = receiver
             givers.remove(giver)
             receivers.remove(receiver)
 
-        g2 = list(givers)
-        random.shuffle(g2)
-        r2 = list(receivers)
-        random.shuffle(r2)
-        assert secret_santa_search(assignments, g2, r2)
+        MAX_FAILURES = 10
+        num_failures = 0
+        while num_failures < MAX_FAILURES:
+            assignments = base_assignments.copy()
+            g2 = list(givers)
+            random.shuffle(g2)
+            r2 = list(receivers)
+            random.shuffle(r2)
+
+            # fill the assignments
+            assert secret_santa_search(assignments, g2, r2)
+            if never_constraints is None:
+                logging.debug("No 'never' constraints so assignment is fine")
+                break
+            elif check_never_constraints(assignments, never_constraints):
+                logging.debug("assignment satisfied all 'never' constraints")
+                break
+            else:
+                logging.debug(
+                    f"assignment has failed one or more 'never' constraints. # failures is {num_failures}"
+                )
+                num_failures += 1
+
+        if num_failures >= MAX_FAILURES:
+            logging.critical(
+                "Exceeded maximum number of failures on satisfying 'never' constraints"
+            )
+            sys.exit(1)
+
         return assignments
 
 
-def read_people(fname: str) -> Dict[str, str]:
+def read_people(fname: str) -> Dict[str, dict]:
     try:
         with open(fname) as fp:
             return json.load(fp)["names"]
@@ -162,6 +206,7 @@ def create_pairings_from_file(
     pairings = secret_santa_hat(
         names,
         always_constraints=constraints.get("always", None),
+        never_constraints=constraints.get("never", None),
         random_seed=random_seed,
     )
     sanity_check_pairings(pairings, names)
