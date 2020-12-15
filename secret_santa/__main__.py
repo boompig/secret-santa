@@ -30,6 +30,8 @@ def setup_logging(verbose: bool):
 
 
 def save_encrypted_pairings(enc_pairings: Dict[str, dict], output_dir: str):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
     logging.debug("Saving encrypted pairings (without receiver name)...")
     p2 = copy.deepcopy(enc_pairings)
     for d in p2.values():
@@ -43,25 +45,37 @@ def main(
     people_fname: str,
     email_fname: str,
     config_fname: str,
+    output_dir: str,
     live: bool,
     encrypt: bool,
     random_seed: Optional[int],
+    encrypted_pairings_fname: Optional[str],
 ) -> None:
-    pairings = create_pairings_from_file(people_fname, random_seed=random_seed)
-    if not live:
-        logging.warning("Not sending emails since this is a dry run.")
-        print("Pairings:")
-        for i, (g, r) in enumerate(pairings.items()):
-            print(f"\t{i + 1}. {g} -> {r}")
+    if encrypted_pairings_fname:
+        assert (
+            encrypt
+        ), "--encrypt option must be specified if supplying encrypted pairings file"
+    if encrypted_pairings_fname is None:
+        pairings = create_pairings_from_file(people_fname, random_seed=random_seed)
+        if not live:
+            logging.warning("Not sending emails since this is a dry run.")
+            print("Pairings:")
+            for i, (g, r) in enumerate(pairings.items()):
+                print(f"\t{i + 1}. {g} -> {r}")
     config = read_config(config_fname)
     people = read_people(people_fname)
     if encrypt:
-        enc_pairings = encrypt_pairings(pairings)
-        save_encrypted_pairings(enc_pairings, output_dir=DATA_OUTPUT_DIR)
+        if encrypted_pairings_fname:
+            logging.debug("Read encrypted pairings from file")
+            with open(encrypted_pairings_fname) as fp:
+                enc_pairings = json.load(fp)
+        else:
+            enc_pairings = encrypt_pairings(pairings)
+        save_encrypted_pairings(enc_pairings, output_dir=output_dir)
         create_emails(
             pairings=enc_pairings,
             email_template_fname=email_fname,
-            output_dir=DATA_OUTPUT_DIR,
+            output_dir=output_dir,
         )
         if live:
             givers = list(enc_pairings.keys())
@@ -69,7 +83,7 @@ def main(
                 givers=givers,
                 emails=people,
                 email_subject=config["email_subject"],
-                output_dir=DATA_OUTPUT_DIR,
+                output_dir=output_dir,
             )
         else:
             # print the decryption URLs
@@ -79,13 +93,19 @@ def main(
                 )
                 print(f"Giver = {g}")
                 print(f"Decryption URL = {url}")
+            logging.debug("Email subject would have been '%s'", config["email_subject"])
+            logging.warning("Not sending emails since this is a dry run.")
     else:
         logging.critical("Unencrypted pairings no longer supported")
         sys.exit(1)
 
 
 def resend(
-    people_fname: str, email_fname: str, config_fname: str, resend_to: List[str]
+    people_fname: str,
+    email_fname: str,
+    config_fname: str,
+    output_dir: str,
+    resend_to: List[str],
 ) -> None:
     assert isinstance(resend_to, list)
     config = read_config(config_fname)
@@ -94,7 +114,7 @@ def resend(
         givers=resend_to,
         emails=people,
         email_subject=config["email_subject"],
-        output_dir=DATA_OUTPUT_DIR,
+        output_dir=output_dir,
     )
 
 
@@ -130,11 +150,22 @@ if __name__ == "__main__":
         help="Checks existing emails to verify that the pairings were valid",
     )
     parser.add_argument(
+        "--output-dir",
+        "-D",
+        default=DATA_OUTPUT_DIR,
+        help="Directory where to store intermediate values",
+    )
+    parser.add_argument(
         "-s",
         "--random-seed",
         type=int,
         default=None,
         help="Random seed to use to generate repeatable pairings",
+    )
+    parser.add_argument(
+        "--encrypted-pairings",
+        default=None,
+        help="Reuse previous encrypted pairings as specified by this file",
     )
     args = parser.parse_args()
     setup_logging(args.verbose)
@@ -143,29 +174,35 @@ if __name__ == "__main__":
     config_fname = os.path.join(CONFIG_DIR, "config.json")
     assert os.path.exists(people_fname), f"file {people_fname} does not exist"
     assert os.path.exists(email_fname), f"file {email_fname} does not exist"
+    logging.debug("Using output directory %s", args.output_dir)
     if args.resend:
         resend(
             email_fname=email_fname,
             people_fname=people_fname,
             config_fname=config_fname,
+            output_dir=args.output_dir,
             resend_to=args.resend,
         )
     elif args.sanity_check:
         people = read_people(people_fname)
         sanity_check_encrypted_pairings(
-            data_dir=DATA_OUTPUT_DIR, names=list(people.keys()),
+            data_dir=args.output_dir,
+            names=list(people.keys()),
         )
     elif args.sanity_check_emails:
         people = read_people(people_fname)
         sanity_check_emails(
-            data_dir=DATA_OUTPUT_DIR, emails=people,
+            data_dir=args.output_dir,
+            emails=people,
         )
     else:
         main(
             email_fname=email_fname,
             people_fname=people_fname,
             config_fname=config_fname,
+            output_dir=args.output_dir,
             live=args.live,
             encrypt=args.encrypt,
             random_seed=args.random_seed,
+            encrypted_pairings_fname=args.encrypted_pairings,
         )

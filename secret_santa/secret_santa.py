@@ -147,6 +147,11 @@ def read_people(fname: str) -> Dict[str, str]:
 def create_pairings_from_file(
     people_fname: str, random_seed: Optional[int] = None
 ) -> Dict[str, str]:
+    """
+    Given a file which lists people in a pre-specified format, return a mapping from giver to receiver
+    :param people_fname: A file that can be consumed by `read_people`
+    :param random_seed: Random seed value for reproducibility. Otherwise completely random.
+    """
     if random_seed is None:
         random_seed = random.randrange(1, sys.maxsize)
     people = read_people(people_fname)

@@ -37,8 +37,7 @@ def decrypt_with_api(key: str, msg: str, api_base_url: str) -> str:
 
 
 def create_decryption_url(encrypted_msg: str, key: str) -> str:
-    """:param encrypted_msg:        Receiver's encrypted name
-    """
+    """:param encrypted_msg:        Receiver's encrypted name"""
     return "{site_url}?name={name}&key={key}".format(
         site_url=SITE_URL,
         name=urllib.parse.quote_plus(encrypted_msg),
