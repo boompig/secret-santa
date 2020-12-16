@@ -144,7 +144,7 @@ def extract_link_from_email(email_fname: str) -> str:
         contents = fp.read()
         soup = BeautifulSoup(contents, "html.parser")
         for link in soup.find_all("a"):
-            if link.attrs["href"].startswith("https://boompig.herokuapp.com"):
+            if link.attrs["href"].startswith("https://kats.coffee"):
                 return link.attrs["href"]
     raise Exception("fatal error: link not found in email")
 

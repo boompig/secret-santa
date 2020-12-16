@@ -17,8 +17,8 @@ from .config import CONFIG
 from .secret_santa import sanity_check_pairings
 
 CURRENT_YEAR = CONFIG.get("year", datetime.now().year)
-SITE_URL = f"https://boompig.herokuapp.com/secret-santa/{CURRENT_YEAR}"
-DEFAULT_API_BASE_URL = "https://boompig.herokuapp.com/secret-santa/api"
+SITE_URL = f"https://kats.coffee/secret-santa/{CURRENT_YEAR}"
+DEFAULT_API_BASE_URL = "https://kats.coffee/secret-santa/api"
 API_BASE_URL = CONFIG.get("API_BASE_URL", DEFAULT_API_BASE_URL)
 
 
@@ -49,6 +49,7 @@ def encrypt_pairings(
     pairings: Dict[str, str], api_base_url: str = API_BASE_URL
 ) -> Dict[str, dict]:
     d = {}
+    logging.info("Encrypting pairings...")
     for giver, receiver in pairings.items():
         # create keys
         key, enc_receiver_name = encrypt_name_with_api(receiver, api_base_url)

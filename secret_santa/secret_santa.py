@@ -107,12 +107,18 @@ def check_never_constraints(
     Return true iff the never constraints are all satisfied
     :param never_constraints: List of lists, where each item has 2 values: giver and receiver
     """
+    num_constraints = 0
     for pair in never_constraints:
         assert len(pair) == 2
         giver, bad_receiver = pair
         assert giver in assignments, f"giver {giver} must be in assignments"
         if assignments[giver] == bad_receiver:
             return False
+        num_constraints += 1
+    if num_constraints == 0:
+        logging.debug("No never constraints found")
+    else:
+        logging.info(f"All {num_constraints} never constraints are satisfied")
     return True
 
 
@@ -131,52 +137,50 @@ def secret_santa_hat(
     logging.debug("Using random seed %s", random_seed)
     random.seed(random_seed)
     base_assignments = {}
+    givers = set(names)
+    receivers = set(names)
+    # fix the always constraints
     if always_constraints is None:
-        logging.debug("Using simple solver")
-        return secret_santa_hat_simple(names)
-    else:
-        givers = set(names)
-        receivers = set(names)
-        # fix the always constraints
-        for item in always_constraints:
-            assert (
-                len(item) == 2
-            ), "always constraint must be expressed as a list of lists with each element having 2 items"
-            giver, receiver = item
-            base_assignments[giver] = receiver
-            givers.remove(giver)
-            receivers.remove(receiver)
+        always_constraints = []
+    for item in always_constraints:
+        assert (
+            len(item) == 2
+        ), "always constraint must be expressed as a list of lists with each element having 2 items"
+        giver, receiver = item
+        base_assignments[giver] = receiver
+        givers.remove(giver)
+        receivers.remove(receiver)
 
-        MAX_FAILURES = 10
-        num_failures = 0
-        while num_failures < MAX_FAILURES:
-            assignments = base_assignments.copy()
-            g2 = list(givers)
-            random.shuffle(g2)
-            r2 = list(receivers)
-            random.shuffle(r2)
+    MAX_FAILURES = 10
+    num_failures = 0
+    while num_failures < MAX_FAILURES:
+        assignments = base_assignments.copy()
+        g2 = list(givers)
+        random.shuffle(g2)
+        r2 = list(receivers)
+        random.shuffle(r2)
 
-            # fill the assignments
-            assert secret_santa_search(assignments, g2, r2)
-            if never_constraints is None:
-                logging.debug("No 'never' constraints so assignment is fine")
-                break
-            elif check_never_constraints(assignments, never_constraints):
-                logging.debug("assignment satisfied all 'never' constraints")
-                break
-            else:
-                logging.debug(
-                    f"assignment has failed one or more 'never' constraints. # failures is {num_failures}"
-                )
-                num_failures += 1
-
-        if num_failures >= MAX_FAILURES:
-            logging.critical(
-                "Exceeded maximum number of failures on satisfying 'never' constraints"
+        # fill the assignments
+        assert secret_santa_search(assignments, g2, r2)
+        if never_constraints is None:
+            logging.debug("No 'never' constraints so assignment is fine")
+            break
+        elif check_never_constraints(assignments, never_constraints):
+            logging.debug("assignment satisfied all 'never' constraints")
+            break
+        else:
+            logging.debug(
+                f"assignment has failed one or more 'never' constraints. # failures is {num_failures}"
             )
-            sys.exit(1)
+            num_failures += 1
 
-        return assignments
+    if num_failures >= MAX_FAILURES:
+        logging.critical(
+            "Exceeded maximum number of failures on satisfying 'never' constraints"
+        )
+        sys.exit(1)
+
+    return assignments
 
 
 def read_people(fname: str) -> Dict[str, dict]:
