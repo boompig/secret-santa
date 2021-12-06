@@ -15,6 +15,7 @@ htmlcov
 
 # confidentiality
 config/
+backup/
 
 # generated files
 data/

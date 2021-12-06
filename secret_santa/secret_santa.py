@@ -100,6 +100,28 @@ def secret_santa_search(
     return False
 
 
+def check_always_constraints(
+    assignments: Dict[str, str], always_constraints: List[list]
+) -> bool:
+    """
+    Return true iff the always constraints are all satisfied
+    :param always_constraints: List of lists, where each item has 2 values: giver and receiver
+    """
+    num_constraints = 0
+    for pair in always_constraints:
+        assert len(pair) == 2
+        giver, bad_receiver = pair
+        assert giver in assignments, f"giver {giver} must be in assignments"
+        if assignments[giver] != bad_receiver:
+            return False
+        num_constraints += 1
+    if num_constraints == 0:
+        logging.debug("No always constraints found")
+    else:
+        logging.info(f"All {num_constraints} always constraints are satisfied")
+    return True
+
+
 def check_never_constraints(
     assignments: Dict[str, str], never_constraints: List[list]
 ) -> bool:
@@ -153,6 +175,7 @@ def secret_santa_hat(
 
     MAX_FAILURES = 10
     num_failures = 0
+    i = 1
     while num_failures < MAX_FAILURES:
         assignments = base_assignments.copy()
         g2 = list(givers)
@@ -160,19 +183,38 @@ def secret_santa_hat(
         r2 = list(receivers)
         random.shuffle(r2)
 
+        is_success = True
+
         # fill the assignments
         assert secret_santa_search(assignments, g2, r2)
         if never_constraints is None:
-            logging.debug("No 'never' constraints so assignment is fine")
-            break
+            logging.debug("No 'never' constraints so assignment %d is fine", i)
         elif check_never_constraints(assignments, never_constraints):
-            logging.debug("assignment satisfied all 'never' constraints")
-            break
+            logging.debug("assignment %d satisfied all 'never' constraints", i)
         else:
             logging.debug(
-                f"assignment has failed one or more 'never' constraints. # failures is {num_failures}"
+                f"assignment {i} has failed one or more 'never' constraints. # failures is {num_failures}"
             )
             num_failures += 1
+            is_success = False
+
+        if is_success:
+            if always_constraints is None:
+                logging.debug("No 'always' constraints so assignment %d is fine", i)
+            elif check_always_constraints(assignments, always_constraints):
+                logging.debug("assignment %d satisfied all 'always' constraints", i)
+            else:
+                logging.debug(
+                    f"assignment {i} has failed one or more 'always' constraints. # failures is {num_failures}"
+                )
+                num_failures += 1
+                is_success = False
+
+        if is_success:
+            logging.debug("Assignment %d is a success", i)
+            break
+
+        i += 1
 
     if num_failures >= MAX_FAILURES:
         logging.critical(

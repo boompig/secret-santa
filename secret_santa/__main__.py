@@ -3,6 +3,7 @@ import json
 import logging
 import os.path
 from argparse import ArgumentParser
+from datetime import datetime
 from typing import Dict, List, Optional
 
 import coloredlogs
@@ -41,6 +42,7 @@ def save_encrypted_pairings(enc_pairings: Dict[str, dict], output_dir: str):
     fname = os.path.join(output_dir, "encrypted_pairings.json")
     with open(fname, "w") as fp:
         json.dump(p2, fp, sort_keys=True, indent=4)
+    logging.debug("Saved encrypted pairings in file %s", fname)
 
 
 def save_unencrypted_pairings(pairings: Dict[str, str], output_dir: str):
@@ -69,6 +71,10 @@ def main(
             encrypt
         ), "--encrypt option must be specified if supplying encrypted pairings file"
     if encrypted_pairings_fname is None:
+        logging.debug(
+            "No encrypted pairings file specified, creating pairings from file %s",
+            people_fname,
+        )
         pairings = create_pairings_from_file(people_fname, random_seed=random_seed)
         if not live:
             logging.warning("Not sending emails since this is a dry run.")
@@ -105,12 +111,15 @@ def main(
             )
         else:
             # print the decryption URLs
+            print("Decryption URLs:")
+            i = 1
             for g, d in enc_pairings.items():
                 url = create_decryption_url(
                     encrypted_msg=d["encrypted_message"], key=d["key"]
                 )
-                print(f"Giver = {g}")
-                print(f"Decryption URL = {url}")
+                print(f"\t{i}. Giver = {g}")
+                print(f"\tDecryption URL = {url}")
+                i += 1
             logging.debug("Email subject would have been '%s'", config["email_subject"])
             logging.warning("Not sending emails since this is a dry run.")
     else:
@@ -149,11 +158,22 @@ def resend(
 
 
 if __name__ == "__main__":
+    year = datetime.now().year
+    # these files change from year to year
+    people_fname = os.path.join(CONFIG_DIR, f"names_{year}.json")
+    email_fname = os.path.join(CONFIG_DIR, f"instructions_email_{year}.md")
+    sms_fname = os.path.join(CONFIG_DIR, f"sms_template_{year}.jinja2")
+
     parser = ArgumentParser()
     parser.add_argument(
         "--live",
         action="store_true",
         help="Actually send the emails. By default dry run",
+    )
+    parser.add_argument(
+        "--people-file",
+        default=people_fname,
+        help="Filename that contains people's names and contact info",
     )
     parser.add_argument(
         "--encrypt",
@@ -199,30 +219,28 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     setup_logging(args.verbose)
-    people_fname = os.path.join(CONFIG_DIR, "names.json")
-    email_fname = os.path.join(CONFIG_DIR, "instructions_email.md")
+    # these files do not change from year to year
     config_fname = os.path.join(CONFIG_DIR, "config.json")
-    sms_fname = os.path.join(CONFIG_DIR, "sms_template.jinja2")
     aws_config_fname = os.path.join(CONFIG_DIR, "aws.json")
-    assert os.path.exists(people_fname), f"file {people_fname} does not exist"
+    assert os.path.exists(args.people_file), f"file {args.people_file} does not exist"
     assert os.path.exists(email_fname), f"file {email_fname} does not exist"
     logging.debug("Using output directory %s", args.output_dir)
     if args.resend:
         resend(
             email_fname=email_fname,
-            people_fname=people_fname,
+            people_fname=args.people_file,
             config_fname=config_fname,
             output_dir=args.output_dir,
             resend_to=args.resend,
         )
     elif args.sanity_check:
-        people = read_people(people_fname)
+        people = read_people(args.people_file)
         sanity_check_encrypted_pairings(
             data_dir=args.output_dir,
             names=list(people.keys()),
         )
     elif args.sanity_check_emails:
-        people = read_people(people_fname)
+        people = read_people(args.people_file)
         emails = {}
         for name, item in people.items():
             assert "email" in item
@@ -235,7 +253,7 @@ if __name__ == "__main__":
         main(
             email_fname=email_fname,
             sms_fname=sms_fname,
-            people_fname=people_fname,
+            people_fname=args.people_file,
             config_fname=config_fname,
             aws_config_fname=aws_config_fname,
             output_dir=args.output_dir,
