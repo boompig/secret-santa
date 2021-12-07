@@ -74,5 +74,5 @@ def send_all_sms_messages(
         else:
             print(o["number"])
             print(o["message"])
-            logging.info("This is a dry run. Not sending message.")
+            logging.warning("This is a dry run. Not sending message.")
     logging.info("All SMS messages sent.")
