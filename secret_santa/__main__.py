@@ -123,6 +123,7 @@ def main(
             logging.debug("Email subject would have been '%s'", config["email_subject"])
             logging.warning("Not sending emails since this is a dry run.")
     else:
+        assert os.path.exists(sms_fname), f"Path to SMS filename {sms_fname} does not exist"
         save_unencrypted_pairings(pairings, output_dir)
         create_text_messages(
             pairings=pairings, template_file=sms_fname, output_dir=output_dir
@@ -169,6 +170,11 @@ if __name__ == "__main__":
         "--live",
         action="store_true",
         help="Actually send the emails. By default dry run",
+    )
+    parser.add_argument(
+        "--sms-fname",
+        default=sms_fname,
+        help="Filename that contains the jinja2 template for the SMS messages",
     )
     parser.add_argument(
         "--people-file",
@@ -223,7 +229,7 @@ if __name__ == "__main__":
     config_fname = os.path.join(CONFIG_DIR, "config.json")
     aws_config_fname = os.path.join(CONFIG_DIR, "aws.json")
     assert os.path.exists(args.people_file), f"file {args.people_file} does not exist"
-    assert os.path.exists(email_fname), f"file {email_fname} does not exist"
+    # assert os.path.exists(email_fname), f"file {email_fname} does not exist"
     logging.debug("Using output directory %s", args.output_dir)
     if args.resend:
         resend(
@@ -252,7 +258,7 @@ if __name__ == "__main__":
     else:
         main(
             email_fname=email_fname,
-            sms_fname=sms_fname,
+            sms_fname=args.sms_fname,
             people_fname=args.people_file,
             config_fname=config_fname,
             aws_config_fname=aws_config_fname,

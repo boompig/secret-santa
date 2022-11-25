@@ -9,12 +9,13 @@ MANIFEST
 .tox
 htmlcov
 .coverage
+env39
 
 # editor
 *.code-workspace
 
 # confidentiality
-config/
+config/*.json
 backup/
 
 # generated files

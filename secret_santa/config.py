@@ -7,8 +7,9 @@ def read_config(fname: str) -> dict:
     try:
         with open(fname) as fp:
             return json.load(fp)
-    except Exception:
+    except Exception as err:
         logging.critical("Failed to read config file %s", fname)
+        logging.critical(err)
         raise SystemExit
 
 
