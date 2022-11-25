@@ -43,9 +43,12 @@ def send_all_sms_messages(
     people: Dict[str, dict], output_dir: str, is_live: bool, aws_config_fname: str
 ):
     """
-    Send an SMS message to each person.
+    Use AWS SNS to send an SMS message to each person in `people`.
     Assume SMS text already exists in `output_dir`
     :param people: output of read_people
+    :param output_dir:  Directory with SMS text contents.
+                        Each SMS text will have the person's name attached.
+    :param is_live:     If false, then this will merely be a dry run
     """
     aws_config = read_aws_config(aws_config_fname)
     # Create an SNS client

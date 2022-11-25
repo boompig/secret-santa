@@ -138,24 +138,45 @@ def main(
 
 def resend(
     people_fname: str,
-    email_fname: str,
+    aws_config_fname: str,
     config_fname: str,
     output_dir: str,
     resend_to: List[str],
+    encrypt: bool,
 ) -> None:
+    """
+    Resend previously sent SMS messages or emails.
+    If encrypt is specified, send the emails.
+    Otherwise send the text messages.
+    :param resend_to: Specifies the people to whom we are resending emails
+    """
     assert isinstance(resend_to, list)
     config = read_config(config_fname)
     people = read_people(people_fname)
-    emails = {}  # type: Dict[str, str]
-    for name, item in people.items():
-        assert "email" in item
-        emails[name] = item["email"]
-    send_all_emails(
-        givers=resend_to,
-        emails=emails,
-        email_subject=config["email_subject"],
-        output_dir=output_dir,
-    )
+    if encrypt:
+        emails = {}  # type: Dict[str, str]
+        for name, item in people.items():
+            assert ("email" in item)
+            emails[name] = item["email"]
+        send_all_emails(
+            givers=resend_to,
+            emails=emails,
+            email_subject=config["email_subject"],
+            output_dir=output_dir,
+        )
+    else:
+        logging.info("Only resending to selected people")
+        resend_people = {}
+        for name in resend_to:
+            logging.info("Picked %s", name)
+            assert name in people
+            resend_people[name] = people[name]
+        send_all_sms_messages(
+            people=resend_people,
+            output_dir=output_dir,
+            is_live=True,
+            aws_config_fname=aws_config_fname,
+        )
 
 
 if __name__ == "__main__":
@@ -193,7 +214,7 @@ if __name__ == "__main__":
         "--resend",
         nargs="+",
         default=None,
-        help="Resend emails to the people listed. Can give as many people. Names must match exactly with names file.",
+        help="Resend emails/SMS to the people listed. Can give as many people. Names must match exactly with names file.",
     )
     parser.add_argument(
         "--sanity-check",
@@ -233,11 +254,12 @@ if __name__ == "__main__":
     logging.debug("Using output directory %s", args.output_dir)
     if args.resend:
         resend(
-            email_fname=email_fname,
+            aws_config_fname=aws_config_fname,
             people_fname=args.people_file,
             config_fname=config_fname,
             output_dir=args.output_dir,
             resend_to=args.resend,
+            encrypt=args.encrypt,
         )
     elif args.sanity_check:
         people = read_people(args.people_file)
