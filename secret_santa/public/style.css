@@ -1,0 +1,46 @@
+html, body {
+    font-size: 1rem;
+    font-family: sans-serif;
+}
+
+main {
+    max-width: 620px;
+    margin: 0 auto;
+}
+
+.people-filename, .past-campaign-name {
+    display: inline-block;
+    padding-right: .5rem;
+}
+
+form#names-file-form input[type="text"] {
+    width: 400px;
+}
+
+#people-container {
+    padding-bottom: 1rem;
+}
+
+.people-name {
+    margin-bottom: 0;
+}
+
+#sample-pairings-container {
+    padding-top: 1rem;
+}
+
+.error-message {
+    background-color: lightcoral;
+    padding: .5rem;
+
+    margin-bottom: .5rem;
+}
+
+#back-section {
+    margin-top: 1rem;
+}
+
+#send-texts-form button {
+    margin-top: .5rem;
+    display: block;
+}

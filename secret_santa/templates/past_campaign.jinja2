@@ -1,0 +1,49 @@
+{% extends "layout.jinja2" %}
+{% block main %}
+<main>
+    <h1>Campaign {{ campaign_name }}</h1>
+
+    <section id="people-section">
+        <h2>Names</h2>
+        <div id="people-container">
+            {% for name, o in people.items() %}
+                <div>
+                    <h4 class="people-name">{{ name }}</h4>
+                    {% if "text" in o %}
+                        <div>Phone: {{ o.get("text") }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section id="assignment-section">
+        <h2>Pairings</h2>
+
+        {% if show_assignment %}
+            <div>
+                {% for giver, receiver in pairings.items() %}
+                    <div>{{ giver }} -> {{ receiver }}</div>
+                {% endfor %}
+            </div>
+            <form>
+                <input type="hidden" name="campaign_name" value="{{campaign_name}}" />
+                <input type="hidden" name="show_assignment" value="0" />
+                <button type="submit">Hide Pairings</button>
+            </form>
+        {% else %}
+            <p>Pairings are currently hidden</p>
+
+            <form>
+                <input type="hidden" name="campaign_name" value="{{campaign_name}}" />
+                <input type="hidden" name="show_assignment" value="1" />
+                <button type="submit">View Pairings</button>
+            </form>
+        {% endif %}
+    </section>
+
+    <section id="back-section">
+        <a href="/">Go back home</a>
+    </section>
+</main>
+{% endblock %}

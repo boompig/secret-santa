@@ -17,6 +17,7 @@ env39
 # confidentiality
 config/*.json
 backup/
+archive/
 
 # generated files
 data/

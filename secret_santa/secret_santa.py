@@ -151,6 +151,7 @@ def secret_santa_hat(
     never_constraints: Optional[List[list]] = None,
 ) -> Dict[str, str]:
     """
+    Create pairings expressed as a map from giver to receiver
     Constraints are expressed with giver first then receiver
     """
     assert isinstance(names, list)
@@ -226,9 +227,13 @@ def secret_santa_hat(
 
 
 def read_people(fname: str) -> Dict[str, dict]:
+    with open(fname) as fp:
+        return json.load(fp)["names"]
+
+
+def read_people_safe(fname: str) -> Dict[str, dict]:
     try:
-        with open(fname) as fp:
-            return json.load(fp)["names"]
+        return read_people(fname)
     except FileNotFoundError:
         logging.critical("Failed to read people from file %s", fname)
         sys.exit(1)
@@ -244,7 +249,7 @@ def create_pairings_from_file(
     """
     if random_seed is None:
         random_seed = random.randrange(1, sys.maxsize)
-    people = read_people(people_fname)
+    people = read_people_safe(people_fname)
     assert isinstance(people, dict)
     constraints = read_constraints(people_fname)
     assert isinstance(constraints, dict)

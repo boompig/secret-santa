@@ -1,0 +1,56 @@
+{% extends "layout.jinja2" %}
+
+{% block main %}
+<main>
+    <p>This is an alternate interface to the secret santa program compared to the command-line interface.
+    It is meant to be run locally.</p>
+
+    <section>
+        <h2>Current Names</h2>
+        <p>Loaded names from {{ session["people_file_path"] }}</p>
+        <div id="people-container">
+            {% for name, o in session["people"].items() %}
+                <div>
+                    <h4 class="people-name">{{ name }}</h4>
+                    {% if "text" in o %}
+                        <div>Phone: {{ o.get("text") }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        <form action="/submit/reset-people" method="POST">
+            <button type="submit">Choose another names file</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>Simulate secret santa assignments</h2>
+
+        <p>Press the button below to show an example secret santa assignment</p>
+
+        <form action="/submit/assignment" method="POST">
+            <button type="submit">Generate new pairings</button>
+        </form>
+
+        {% if pairings %}
+            <div id="sample-pairings-container">
+                {% for giver, receiver in pairings.items() %}
+                    <div>{{ giver }} -> {{ receiver }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </section>
+
+    <section>
+        <h2>Send text messages</h2>
+
+        <p>Generate new pairings (ignoring the above pairings), save all parameters of the current campaign to a file on disk,
+        generate SMS texts using a jinja2 template (see config directory), then send those texts to all the people listed above.</p>
+
+        <form action="/submit/send-texts" method="POST" id="send-texts-form">
+            <input type="text" name="name" placeholder="campaign name" required="true" />
+            <button type="button" onclick="alert('not implemented')">Send texts</button>
+        </form>
+    </section>
+</main>
+{% endblock %}

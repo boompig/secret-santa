@@ -1,0 +1,49 @@
+{% extends "layout.jinja2"%}
+
+{% block main %}
+<main>
+    <p>This is an alternate interface to the secret santa program compared to the command-line interface.
+    It is meant to be run locally.</p>
+
+    <section>
+        <h2>New Campaign</h2>
+        <p>Select a people file in the config directory to get started.</p>
+
+        {% if people_files %}
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="error-message" role="alert">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% for file in people_files %}
+                <form action="/submit/people" method="POST">
+                    <div class="people-filename">{{ file }}</div>
+                    <input type="hidden" name="people_file_path" value="{{file}}" />
+                    <button type="submit">Choose</button>
+                </form>
+            {% endfor %}
+        {% endif %}
+    </section>
+
+    {% if past_campaigns %}
+        <section>
+            <h2>Past Campaigns</h2>
+
+            <ul>
+                {% for campaign_name in past_campaigns %}
+                    <li>
+                        <form action="/past-campaign" method="GET">
+                            <span class="past-campaign-name">{{ campaign_name }}</span>
+                            <input type="hidden" name="campaign_name" value="{{campaign_name}}" />
+                            <button type="submit">Choose</button>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+</main>
+{% endblock %}

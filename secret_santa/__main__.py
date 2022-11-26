@@ -15,7 +15,7 @@ from .encryption_api import (
     encrypt_pairings,
     sanity_check_encrypted_pairings,
 )
-from .secret_santa import create_pairings_from_file, read_people
+from .secret_santa import create_pairings_from_file, read_people_safe
 from .sms_utils import send_all_sms_messages, create_text_messages
 
 
@@ -82,7 +82,7 @@ def main(
             for i, (g, r) in enumerate(pairings.items()):
                 print(f"\t{i + 1}. {g} -> {r}")
     config = read_config(config_fname)
-    people = read_people(people_fname)
+    people = read_people_safe(people_fname)
     if encrypt:
         if encrypted_pairings_fname:
             logging.debug("Read encrypted pairings from file")
@@ -152,7 +152,7 @@ def resend(
     """
     assert isinstance(resend_to, list)
     config = read_config(config_fname)
-    people = read_people(people_fname)
+    people = read_people_safe(people_fname)
     if encrypt:
         emails = {}  # type: Dict[str, str]
         for name, item in people.items():
@@ -262,13 +262,13 @@ if __name__ == "__main__":
             encrypt=args.encrypt,
         )
     elif args.sanity_check:
-        people = read_people(args.people_file)
+        people = read_people_safe(args.people_file)
         sanity_check_encrypted_pairings(
             data_dir=args.output_dir,
             names=list(people.keys()),
         )
     elif args.sanity_check_emails:
-        people = read_people(args.people_file)
+        people = read_people_safe(args.people_file)
         emails = {}
         for name, item in people.items():
             assert "email" in item
