@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 import coloredlogs
+from requests.exceptions import ConnectionError
 
 from .config import CONFIG_DIR, read_config
 from .email_utils import create_emails, sanity_check_emails, send_all_emails
@@ -79,7 +80,8 @@ def main(
         if not live:
             logging.warning("Not sending emails since this is a dry run.")
             print("Pairings:")
-            for i, (g, r) in enumerate(pairings.items()):
+            # print the pairings in alphabetical order of giver
+            for i, (g, r) in enumerate(sorted(pairings.items(), key=lambda kv: kv[0])):
                 print(f"\t{i + 1}. {g} -> {r}")
     config = read_config(config_fname)
     people = read_people(people_fname)
@@ -89,7 +91,12 @@ def main(
             with open(encrypted_pairings_fname) as fp:
                 enc_pairings = json.load(fp)
         else:
-            enc_pairings = encrypt_pairings(pairings)
+            try:
+                enc_pairings = encrypt_pairings(pairings)
+            except ConnectionError as err:
+                logging.critical("Connection to encryption server failed")
+                logging.critical(err)
+                exit(1)
         save_encrypted_pairings(enc_pairings, output_dir=output_dir)
         create_emails(
             pairings=enc_pairings,
@@ -123,17 +130,18 @@ def main(
             logging.debug("Email subject would have been '%s'", config["email_subject"])
             logging.warning("Not sending emails since this is a dry run.")
     else:
-        assert os.path.exists(sms_fname), f"Path to SMS filename {sms_fname} does not exist"
-        save_unencrypted_pairings(pairings, output_dir)
-        create_text_messages(
-            pairings=pairings, template_file=sms_fname, output_dir=output_dir
-        )
-        send_all_sms_messages(
-            people=people,
-            output_dir=output_dir,
-            is_live=live,
-            aws_config_fname=aws_config_fname,
-        )
+        if live:
+            assert os.path.exists(sms_fname), f"Path to SMS filename {sms_fname} does not exist"
+            save_unencrypted_pairings(pairings, output_dir)
+            create_text_messages(
+                pairings=pairings, template_file=sms_fname, output_dir=output_dir
+            )
+            send_all_sms_messages(
+                people=people,
+                output_dir=output_dir,
+                is_live=live,
+                aws_config_fname=aws_config_fname,
+            )
 
 
 def resend(

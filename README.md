@@ -8,7 +8,7 @@ Install all packages listed in `requirements.txt` in a virtualenv.
 
 1. create file `config/credentials.json` which contains `email` and `application_specific_password` fields for Gmail.
 2. create file `config/names.json` whose contents should two keys:
-    - `names`: map from names to emails
+    - `names`: map from names to object with key `email` (mapping to email) or `text` (mapping to number to use for SMS)
     - `constraints` (optional): has keys `always` and `never`. Each is a list, where each item is a list of two names. First name is giver and second name is receiver.
 3. create file `config/instructions_email.md` whose contents are the text of the email. Use python-format style formatting for string substitutions. Available variables are `giver_name` and `link`.
 4. create file `config/config.json` which has these keys:
