@@ -98,6 +98,7 @@ def main(
                 logging.critical(err)
                 exit(1)
         save_encrypted_pairings(enc_pairings, output_dir=output_dir)
+        assert os.path.exists(email_fname), f"Email markdown file {email_fname} must exist"
         create_emails(
             pairings=enc_pairings,
             email_template_fname=email_fname,
@@ -201,7 +202,7 @@ if __name__ == "__main__":
         help="Actually send the emails. By default dry run",
     )
     parser.add_argument(
-        "--sms-fname",
+        "--sms-file",
         default=sms_fname,
         help="Filename that contains the jinja2 template for the SMS messages",
     )
@@ -209,6 +210,11 @@ if __name__ == "__main__":
         "--people-file",
         default=people_fname,
         help="Filename that contains people's names and contact info",
+    )
+    parser.add_argument(
+        "--email-file",
+        default=email_fname,
+        help="Filename that contains the markdown template for the email",
     )
     parser.add_argument(
         "--encrypt",
@@ -287,8 +293,8 @@ if __name__ == "__main__":
         )
     else:
         main(
-            email_fname=email_fname,
-            sms_fname=args.sms_fname,
+            email_fname=args.email_file,
+            sms_fname=args.sms_file,
             people_fname=args.people_file,
             config_fname=config_fname,
             aws_config_fname=aws_config_fname,

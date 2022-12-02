@@ -16,6 +16,7 @@ env39
 
 # confidentiality
 config/*.json
+config/instructions_email*.md
 backup/
 
 # generated files
