@@ -2,9 +2,21 @@
 
 Run this script to create secret Santa pairings.
 
-## How to run
+## What Does It Do?
 
-Install all packages listed in `requirements.txt` in a virtualenv.
+1. Create Secret Santa pairings from a pre-defined group of people (participants), with support for direction pairing exclusions.
+2. Distribute the pairings to the participants either via SMS or via email. Supports custom messages that can be formatted with some variables.
+    * Can encrypt/obfuscate the pairings behind a link such that the email inbox of the person sending the pairings will not leak the pairings by accident.
+3. Save pairings such that they can be resent if needed, or for later analysis or sanity checking.
+
+Supports running multiple "campaigns" at once that can contain the same or different group of participants.
+
+## Setup (Installation)
+
+This project uses the `uv` package manager. Run `uv sync` to install deps.
+
+## How to Run
+
 
 1. create file `config/credentials.json` which contains `email` and `application_specific_password` fields for Gmail.
 2. create file `config/names.json` whose contents should two keys:
@@ -15,28 +27,19 @@ Install all packages listed in `requirements.txt` in a virtualenv.
     - `email_subject` - the email subject
     - `year` - current year
 
-Run (inside virtualenv) with:
-
-```
-python -m secret_santa --encrypt --live
+```bash
+uv run -m secret_santa --encrypt --live
 ```
 
 The `--help` switch is also available and gives additional options. A directory called `data` will be created with files for debugging.
 
 ## Development
 
-Create virtualenv and install dependencies
-
-```
-virtualenv venv3 --python=$(which python3)
-source venv3/bin/activate
-pip install -r requirements.txt
-```
+`uv` to install deps, point your IDE at the `.venv` folder created by `uv`.
 
 ## Testing
 
-- specify the correct `API_BASE_URL` in the test script
-- run `tox` *outside* the virtualenv
+This project previously used `tox` but now uses `task`. See `Taskfile.yml`.
 
 ## Debugging
 

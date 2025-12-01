@@ -2,10 +2,12 @@
 *.pyc
 .cache
 __pycache__
+.venv
+.mypy_cache
+.pytest_cache
 venv
 venv3
 MANIFEST
-.mypy_cache
 .tox
 htmlcov
 .coverage
@@ -13,9 +15,11 @@ env39
 
 # editor
 *.code-workspace
+.vscode/
 
 # confidentiality
 config/*.json
+config/sms_template_2023.jinja2
 config/instructions_email*.md
 backup/
 

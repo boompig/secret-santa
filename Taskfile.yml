@@ -1,0 +1,15 @@
+version: '3'
+
+tasks:
+  test:
+    cmds:
+      - uv run pytest -x tests/
+
+  typecheck:
+    cmds:
+      - uv run mypy secret_santa/ --ignore-missing-imports
+
+  lint:
+    cmds:
+      - uv run ruff check secret_santa/ tests/
+      - uv run ruff format --check secret_santa/ tests/

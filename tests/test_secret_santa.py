@@ -13,7 +13,7 @@ CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
 NAMES = {
     "Light Yagami": "kira@deathnote.slav",
     "Eru Roraito": "l@deathnote.slav",
-    "Misa Amane": "misamisa@deathnote.slav"
+    "Misa Amane": "misamisa@deathnote.slav",
 }
 SEED = 42
 
@@ -140,11 +140,7 @@ def test_secret_santa_hat_with_multiple_always_constraints():
     a = names[0]
     b = names[1]
     c = names[2]
-    always_constraints = [
-        [a, b],
-        [b, c],
-        [c, a]
-    ]
+    always_constraints = [[a, b], [b, c], [c, a]]
     pairings = secret_santa.secret_santa_hat(names, SEED, always_constraints)
     # does not return anything
     secret_santa.sanity_check_pairings(pairings, names)
@@ -170,11 +166,7 @@ def test_secret_santa_hat_simple_with_seed():
 
 
 def test_sanity_check_pairings_fail_double_receiver():
-    pairings = {
-        "Alice": "Eve",
-        "Bob": "Eve",
-        "Eve": "Bob"
-    }
+    pairings = {"Alice": "Eve", "Bob": "Eve", "Eve": "Bob"}
     names = ["Alice", "Bob", "Eve"]
     with pytest.raises(AssertionError):
         secret_santa.sanity_check_pairings(pairings, names)

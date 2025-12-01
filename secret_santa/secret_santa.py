@@ -165,9 +165,9 @@ def secret_santa_hat(
     if always_constraints is None:
         always_constraints = []
     for item in always_constraints:
-        assert (
-            len(item) == 2
-        ), "always constraint must be expressed as a list of lists with each element having 2 items"
+        assert len(item) == 2, (
+            "always constraint must be expressed as a list of lists with each element having 2 items"
+        )
         giver, receiver = item
         base_assignments[giver] = receiver
         givers.remove(giver)

@@ -1,13 +1,11 @@
 import os
 import tempfile
-from typing import Dict
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from secret_santa import secret_santa
-from secret_santa.email_utils import (create_emails, get_email_text,
-                                      sanity_check_emails)
+from secret_santa.email_utils import create_emails, sanity_check_emails
 
 from .test_encryption_api import fake_decrypt, fake_encrypt_pairings
 from .test_secret_santa import _get_random_names
@@ -15,7 +13,7 @@ from .test_secret_santa import _get_random_names
 NAMES = {
     "Light Yagami": "kira@deathnote.slav",
     "Eru Roraito": "l@deathnote.slav",
-    "Misa Amane": "misamisa@deathnote.slav"
+    "Misa Amane": "misamisa@deathnote.slav",
 }
 SEED = 42
 DIR = os.path.dirname(__file__)
@@ -33,7 +31,7 @@ def test_create_emails_encrypted():
         create_emails(
             enc_pairings,
             email_template_fname=EMAIL_TEMPLATE_FNAME,
-            output_dir=output_dir
+            output_dir=output_dir,
         )
 
 
@@ -49,7 +47,7 @@ def test_sanity_check_emails_encrypted_fails():
         with pytest.raises(AssertionError):
             with patch("secret_santa.email_utils.decrypt_with_api", m_dec):
                 # with patch("builtins.open", mock_open(read_data=s)):
-                sanity_check_emails(output_dir, emails={
-                    "Light": "light@deathnote.slav"
-                })
+                sanity_check_emails(
+                    output_dir, emails={"Light": "light@deathnote.slav"}
+                )
                 m_dec.assert_called_once()

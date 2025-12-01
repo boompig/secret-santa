@@ -95,6 +95,7 @@ def send_all_emails(
     email_subject: str,
     output_dir: str,
     mailer: Optional[Mailer] = None,
+    email_body_map: Optional[dict[str, str]] = None,
 ) -> None:
     """
     Send an email to each person. Assume email text already exists in `output_dir`
@@ -104,9 +105,12 @@ def send_all_emails(
         mailer = Mailer()
     for giver in givers:
         logging.info("Sending email to %s...", giver)
-        email_fname = get_email_fname(giver, output_dir=output_dir)
-        with open(email_fname) as fp:
-            email_body = fp.read()
+        if email_body_map is None:
+            email_fname = get_email_fname(giver, output_dir=output_dir)
+            with open(email_fname) as fp:
+                email_body = fp.read()
+        else:
+            email_body = email_body_map[giver]
         assert isinstance(email_body, str)
         mailer.send_email(email_subject, email_body, emails[giver])
         logging.info("Sent to %s", giver)
@@ -144,8 +148,10 @@ def extract_link_from_email(email_fname: str) -> str:
         contents = fp.read()
         soup = BeautifulSoup(contents, "html.parser")
         for link in soup.find_all("a"):
-            if link.attrs["href"].startswith("https://kats.coffee"):
-                return link.attrs["href"]
+            href = link.attrs["href"]
+            assert isinstance(href, str)
+            if href.startswith("https://kats.coffee"):
+                return href
     raise Exception("fatal error: link not found in email")
 
 

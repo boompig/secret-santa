@@ -3,7 +3,6 @@ Optionally, you may encrypt the pairings.
 This provides an interface to do so
 """
 
-
 import json
 import logging
 import os

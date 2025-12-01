@@ -6,11 +6,13 @@ Written by Daniel Kats
 """
 
 import json
-import boto3
-from typing import Dict
 import logging
-import jinja2
 import os
+import requests
+from typing import Dict
+
+import boto3
+import jinja2
 
 
 def read_aws_config(fname: str) -> dict:
@@ -39,6 +41,27 @@ def create_text_messages(pairings: Dict[str, str], template_file: str, output_di
     logging.debug("All SMS templates created")
 
 
+def clicksend_send_sms(to_phone_number: str, message: str):
+    from pprint import pprint
+
+    session = requests.Session()
+    session.auth = ("dbkats@gmail.com", "D19044A5-C13E-697E-F740-0B1C1C0611D6")
+    data = {
+        "messages": [
+            {
+                "body": message,
+                "to": to_phone_number.replace(" ", ""),
+            }
+        ]
+    }
+    # send a text message
+    res = session.post(
+        "https://rest.clicksend.com/v3/sms/send",
+        json=data,
+    )
+    pprint(res)
+
+
 def send_all_sms_messages(
     people: Dict[str, dict], output_dir: str, is_live: bool, aws_config_fname: str
 ):
@@ -60,6 +83,8 @@ def send_all_sms_messages(
     )
 
     messages = {}
+
+    use_clicksend = True
     # collect all the messages first
     # this is done to make sure we can send messages to everyone
     for giver, notify_methods in people.items():
@@ -73,9 +98,16 @@ def send_all_sms_messages(
     for giver, o in messages.items():
         if is_live:
             logging.info(f"Sending SMS message to {giver}...")
-            client.publish(PhoneNumber=o["number"], Message=o["message"])
+            if use_clicksend:
+                clicksend_send_sms(o["number"], o["message"])
+            else:
+                client.publish(PhoneNumber=o["number"], Message=o["message"])
         else:
             print(o["number"])
             print(o["message"])
             logging.warning("This is a dry run. Not sending message.")
     logging.info("All SMS messages sent.")
+
+
+if __name__ == "__main__":
+    clicksend_send_sms("+12134369175", "test message, please ignore")

@@ -1,10 +1,9 @@
+import json
+import logging
+import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import json
-import os
-import logging
-from typing import Optional
 
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
 CREDENTIALS_FNAME = os.path.join(CONFIG_DIR, "credentials.json")
@@ -17,7 +16,7 @@ class Mailer:
         # only read credentials once from disk
         self._credentials = read_credentials(CREDENTIALS_FNAME)
         # reuse server
-        self._server = None  # type: Optional[smtplib.SMTP]
+        self._server = None  # type: smtplib.SMTP | None
 
     @property
     def server(self) -> smtplib.SMTP:

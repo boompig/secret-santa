@@ -66,11 +66,12 @@ def main(
     encrypt: bool,
     random_seed: Optional[int],
     encrypted_pairings_fname: Optional[str],
+    channel: Optional[str],
 ) -> None:
     if encrypted_pairings_fname:
-        assert (
-            encrypt
-        ), "--encrypt option must be specified if supplying encrypted pairings file"
+        assert encrypt, (
+            "--encrypt option must be specified if supplying encrypted pairings file"
+        )
     if encrypted_pairings_fname is None:
         logging.debug(
             "No encrypted pairings file specified, creating pairings from file %s",
@@ -98,7 +99,9 @@ def main(
                 logging.critical(err)
                 exit(1)
         save_encrypted_pairings(enc_pairings, output_dir=output_dir)
-        assert os.path.exists(email_fname), f"Email markdown file {email_fname} must exist"
+        assert os.path.exists(email_fname), (
+            f"Email markdown file {email_fname} must exist"
+        )
         create_emails(
             pairings=enc_pairings,
             email_template_fname=email_fname,
@@ -108,9 +111,9 @@ def main(
             givers = list(enc_pairings.keys())
             # get the emails
             emails = {}  # type: Dict[str, str]
-            for name, item in people.items():
+            for giver, item in people.items():
                 assert "email" in item
-                emails[name] = item["email"]
+                emails[giver] = item["email"]
             send_all_emails(
                 givers=givers,
                 emails=emails,
@@ -132,17 +135,40 @@ def main(
             logging.warning("Not sending emails since this is a dry run.")
     else:
         if live:
-            assert os.path.exists(sms_fname), f"Path to SMS filename {sms_fname} does not exist"
+            assert os.path.exists(sms_fname), (
+                f"Path to SMS filename {sms_fname} does not exist"
+            )
             save_unencrypted_pairings(pairings, output_dir)
             create_text_messages(
                 pairings=pairings, template_file=sms_fname, output_dir=output_dir
             )
-            send_all_sms_messages(
-                people=people,
-                output_dir=output_dir,
-                is_live=live,
-                aws_config_fname=aws_config_fname,
-            )
+            assert channel in ["sms", "email", None]
+            if channel == "sms" or channel is None:
+                send_all_sms_messages(
+                    people=people,
+                    output_dir=output_dir,
+                    is_live=live,
+                    aws_config_fname=aws_config_fname,
+                )
+            else:
+                givers = list(pairings.keys())
+                emails = {}
+                email_body_map = {}
+                for giver, item in people.items():
+                    assert "email" in item
+                    emails[giver] = item["email"]
+                    receiver = pairings[giver]
+                    email_body_map[giver] = (
+                        f"Hello {giver}, your secret santa is {receiver}"
+                    )
+
+                send_all_emails(
+                    givers=givers,
+                    emails=emails,
+                    email_subject=config["email_subject"],
+                    output_dir=output_dir,
+                    email_body_map=email_body_map,
+                )
 
 
 def resend(
@@ -165,7 +191,7 @@ def resend(
     if encrypt:
         emails = {}  # type: Dict[str, str]
         for name, item in people.items():
-            assert ("email" in item)
+            assert "email" in item
             emails[name] = item["email"]
         send_all_emails(
             givers=resend_to,
@@ -258,6 +284,11 @@ if __name__ == "__main__":
         default=None,
         help="Reuse previous encrypted pairings as specified by this file",
     )
+    parser.add_argument(
+        "--channel",
+        default=None,
+        help="Send pairings over 'sms' or 'email'",
+    )
     args = parser.parse_args()
     setup_logging(args.verbose)
     # these files do not change from year to year
@@ -303,4 +334,5 @@ if __name__ == "__main__":
             encrypt=args.encrypt,
             random_seed=args.random_seed,
             encrypted_pairings_fname=args.encrypted_pairings,
+            channel=args.channel,
         )
