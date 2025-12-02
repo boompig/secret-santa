@@ -14,6 +14,8 @@ from typing import Dict
 import boto3
 import jinja2
 
+from .file_utils import ParticipantSchema
+
 
 def read_aws_config(fname: str) -> dict:
     with open(fname) as fp:
@@ -65,7 +67,10 @@ def clicksend_send_sms(to_phone_number: str, message: str):
 
 
 def send_all_sms_messages(
-    people: Dict[str, dict], output_dir: str, is_live: bool, aws_config_fname: str
+    people: dict[str, ParticipantSchema],
+    output_dir: str,
+    is_live: bool,
+    aws_config_fname: str,
 ):
     """
     Use AWS SNS to send an SMS message to each person in `people`.
@@ -90,7 +95,9 @@ def send_all_sms_messages(
     # collect all the messages first
     # this is done to make sure we can send messages to everyone
     for giver, notify_methods in people.items():
-        assert "text" in notify_methods, f"no text notification set for {giver}"
+        assert "text" in notify_methods and isinstance(notify_methods["text"], str), (
+            f"no text notification set for {giver}"
+        )
         number = notify_methods["text"].replace(" ", "")
         assert "-" not in number
         message_fname = os.path.join(output_dir, "sms", giver + ".txt")

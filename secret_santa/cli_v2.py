@@ -190,7 +190,7 @@ def create_pairings(
             sys.exit(1)
 
     # fetch participants
-    participants = _read_participants_from_db(db_session, campaign_id)
+    participants = _read_participants_from_db(db_session, campaign.id)
     logging.debug("Fetched %d participants", len(participants))
     p_map = {p.id: p.name for p in participants}
 
@@ -305,7 +305,6 @@ def send_pairings_via_email(
         email_template_fname=email_template_path,
         output_dir=campaign_data_dir,
     )
-    send_all_emails()
 
     raise NotImplementedError
 

@@ -23,6 +23,7 @@ env39
 config/*.json
 config/sms_template_2023.jinja2
 config/instructions_email*.md
+config/campaigns/*
 backup/
 
 # generated files

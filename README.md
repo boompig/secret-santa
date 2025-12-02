@@ -1,10 +1,10 @@
 # About
 
-Run this script to create secret Santa pairings.
+Run this script to create secret Santa pairings and distribute them.
 
 ## What Does It Do?
 
-1. Create Secret Santa pairings from a pre-defined group of people (participants), with support for direction pairing exclusions.
+1. Create Secret Santa pairings from a pre-defined group of people (participants), with support for direction pairing exclusions and locked-in "always" pairings.
 2. Distribute the pairings to the participants either via SMS or via email. Supports custom messages that can be formatted with some variables.
     * Can encrypt/obfuscate the pairings behind a link such that the email inbox of the person sending the pairings will not leak the pairings by accident.
 3. Save pairings such that they can be resent if needed, or for later analysis or sanity checking.
@@ -17,13 +17,15 @@ This project uses the `uv` package manager. Run `uv sync` to install deps.
 
 ## How to Run
 
+Broadly speaking, you will need to only change a few files in the `config` directory.
+I recommend creating a single data directory for a specific campaign (e.g. `config/disco_2025`).
 
 1. create file `config/credentials.json` which contains `email` and `application_specific_password` fields for Gmail.
-2. create file `config/names.json` whose contents should two keys:
+2. create file `config/{campaign_name}/names.json` whose contents should two keys:
     - `names`: map from names to object with key `email` (mapping to email) or `text` (mapping to number to use for SMS)
     - `constraints` (optional): has keys `always` and `never`. Each is a list, where each item is a list of two names. First name is giver and second name is receiver.
-3. create file `config/instructions_email.md` whose contents are the text of the email. Use python-format style formatting for string substitutions. Available variables are `giver_name` and `link`.
-4. create file `config/config.json` which has these keys:
+3. create file `config/{campaign_name}/instructions_email.md` whose contents are the text of the email. Use python-format style formatting for string substitutions. Available variables are `giver_name` and `link`.
+4. create file `config/{campaign_name}/config.json` which has these keys:
     - `email_subject` - the email subject
     - `year` - current year
 

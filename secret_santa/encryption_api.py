@@ -8,7 +8,6 @@ import logging
 import os
 import urllib.parse
 from datetime import datetime
-from typing import Dict, Tuple, List
 
 import requests
 
@@ -21,7 +20,7 @@ DEFAULT_API_BASE_URL = "https://kats.coffee/secret-santa/api"
 API_BASE_URL = CONFIG.get("API_BASE_URL", DEFAULT_API_BASE_URL)
 
 
-def encrypt_name_with_api(name: str, api_base_url: str) -> Tuple[str, str]:
+def encrypt_name_with_api(name: str, api_base_url: str) -> tuple[str, str]:
     enc_url = api_base_url + "/encrypt"
     response = requests.post(enc_url, {"name": name})
     r_json = response.json()
@@ -45,8 +44,8 @@ def create_decryption_url(encrypted_msg: str, key: str) -> str:
 
 
 def encrypt_pairings(
-    pairings: Dict[str, str], api_base_url: str = API_BASE_URL
-) -> Dict[str, dict]:
+    pairings: dict[str, str], api_base_url: str = API_BASE_URL
+) -> dict[str, dict]:
     d = {}
     logging.info("Encrypting pairings...")
     for giver, receiver in pairings.items():
@@ -66,7 +65,7 @@ def encrypt_pairings(
 
 
 def sanity_check_encrypted_pairings(
-    data_dir: str, names: List[str], api_base_url: str = API_BASE_URL
+    data_dir: str, names: list[str], api_base_url: str = API_BASE_URL
 ) -> None:
     """
     Sanity check the saved encrypted pairings file
@@ -74,11 +73,11 @@ def sanity_check_encrypted_pairings(
     """
     assert isinstance(names, list)
     fname = os.path.join(data_dir, "encrypted_pairings.json")
-    enc_pairings = {}  # type: Dict[str, dict]
+    enc_pairings: dict[str, dict] = {}
     with open(fname) as fp:
         enc_pairings = json.load(fp)
     logging.debug("Read encrypted pairings from disk")
-    pairings = {}  # type: Dict[str, str]
+    pairings: dict[str, str] = {}
     for giver, enc_receiver in enc_pairings.items():
         r = decrypt_with_api(
             key=enc_receiver["key"],

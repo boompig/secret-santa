@@ -107,9 +107,9 @@ def main(
         if live:
             givers = list(enc_pairings.keys())
             # get the emails
-            emails = {}  # type: Dict[str, str]
+            emails: dict[str, str] = {}
             for giver, item in people.items():
-                assert "email" in item
+                assert "email" in item and isinstance(item["email"], str)
                 emails[giver] = item["email"]
             send_all_emails(
                 givers=givers,
@@ -152,7 +152,7 @@ def main(
                 emails = {}
                 email_body_map = {}
                 for giver, item in people.items():
-                    assert "email" in item
+                    assert "email" in item and isinstance(item["email"], str)
                     emails[giver] = item["email"]
                     receiver = pairings[giver]
                     email_body_map[giver] = (
@@ -186,9 +186,9 @@ def resend(
     config = read_config(config_fname)
     people = read_people(people_fname)
     if encrypt:
-        emails = {}  # type: Dict[str, str]
+        emails: dict[str, str] = {}
         for name, item in people.items():
-            assert "email" in item
+            assert "email" in item and isinstance(item["email"], str)
             emails[name] = item["email"]
         send_all_emails(
             givers=resend_to,
@@ -214,9 +214,10 @@ def resend(
 if __name__ == "__main__":
     year = datetime.now().year
     # these files change from year to year
-    people_fname = os.path.join(CONFIG_DIR, f"names_{year}.json")
-    email_fname = os.path.join(CONFIG_DIR, f"instructions_email_{year}.md")
-    sms_fname = os.path.join(CONFIG_DIR, f"sms_template_{year}.jinja2")
+    default_people_fname = os.path.join(CONFIG_DIR, f"names_{year}.json")
+    default_email_fname = os.path.join(CONFIG_DIR, f"instructions_email_{year}.md")
+    default_sms_fname = os.path.join(CONFIG_DIR, f"sms_template_{year}.jinja2")
+    default_config_fname = os.path.join(CONFIG_DIR, f"config_{year}.json")
 
     parser = ArgumentParser()
     parser.add_argument(
@@ -226,18 +227,23 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--sms-file",
-        default=sms_fname,
+        default=default_sms_fname,
         help="Filename that contains the jinja2 template for the SMS messages",
     )
     parser.add_argument(
         "--people-file",
-        default=people_fname,
+        default=default_people_fname,
         help="Filename that contains people's names and contact info",
     )
     parser.add_argument(
         "--email-file",
-        default=email_fname,
+        default=default_email_fname,
         help="Filename that contains the markdown template for the email",
+    )
+    parser.add_argument(
+        "--config-file",
+        default=default_config_fname,
+        help="Filename that contains configuration options (mostly email subject)",
     )
     parser.add_argument(
         "--encrypt",
@@ -289,7 +295,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     setup_logging(args.verbose)
     # these files do not change from year to year
-    config_fname = os.path.join(CONFIG_DIR, "config.json")
     aws_config_fname = os.path.join(CONFIG_DIR, "aws.json")
     assert os.path.exists(args.people_file), f"file {args.people_file} does not exist"
     # assert os.path.exists(email_fname), f"file {email_fname} does not exist"
@@ -298,7 +303,7 @@ if __name__ == "__main__":
         resend(
             aws_config_fname=aws_config_fname,
             people_fname=args.people_file,
-            config_fname=config_fname,
+            config_fname=args.config_file,
             output_dir=args.output_dir,
             resend_to=args.resend,
             encrypt=args.encrypt,
@@ -311,9 +316,9 @@ if __name__ == "__main__":
         )
     elif args.sanity_check_emails:
         people = read_people(args.people_file)
-        emails = {}
+        emails: dict[str, str] = {}
         for name, item in people.items():
-            assert "email" in item
+            assert "email" in item and isinstance(item["email"], str)
             emails[name] = item["email"]
         sanity_check_emails(
             data_dir=args.output_dir,
@@ -324,7 +329,7 @@ if __name__ == "__main__":
             email_fname=args.email_file,
             sms_fname=args.sms_file,
             people_fname=args.people_file,
-            config_fname=config_fname,
+            config_fname=args.config_file,
             aws_config_fname=aws_config_fname,
             output_dir=args.output_dir,
             live=args.live,

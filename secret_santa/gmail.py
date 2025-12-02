@@ -16,7 +16,7 @@ class Mailer:
         # only read credentials once from disk
         self._credentials = read_credentials(CREDENTIALS_FNAME)
         # reuse server
-        self._server = None  # type: smtplib.SMTP | None
+        self._server: smtplib.SMTP | None = None
 
     @property
     def server(self) -> smtplib.SMTP:
