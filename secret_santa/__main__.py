@@ -6,9 +6,9 @@ from argparse import ArgumentParser
 from datetime import datetime
 from typing import Dict, List, Optional
 
-import coloredlogs
 from requests.exceptions import ConnectionError
 
+from .cli_utils import setup_logging
 from .config import CONFIG_DIR, read_config
 from .email_utils import create_emails, sanity_check_emails, send_all_emails
 from .encryption_api import (
@@ -23,14 +23,6 @@ from .sms_utils import send_all_sms_messages, create_text_messages
 DATA_OUTPUT_DIR = os.path.normpath(
     os.path.join(os.path.dirname(__file__), "..", "data")
 )
-
-
-def setup_logging(verbose: bool):
-    log_level = logging.DEBUG if verbose else logging.INFO
-    logging.basicConfig(level=log_level)
-    coloredlogs.install(level=log_level)
-    for module in ["urllib3", "botocore"]:
-        logging.getLogger(module).setLevel(logging.WARNING)
 
 
 def save_encrypted_pairings(enc_pairings: Dict[str, dict], output_dir: str):
@@ -68,6 +60,11 @@ def main(
     encrypted_pairings_fname: Optional[str],
     channel: Optional[str],
 ) -> None:
+    """
+    Create a new set of Secret Santa pairings and send them out.
+    This is the end-to-end pipeline including generating links in place of names (where needed) and generating HTML emails.
+    """
+
     if encrypted_pairings_fname:
         assert encrypt, (
             "--encrypt option must be specified if supplying encrypted pairings file"

@@ -5,6 +5,7 @@ __pycache__
 .venv
 .mypy_cache
 .pytest_cache
+.ruff_cache
 venv
 venv3
 MANIFEST
@@ -13,9 +14,10 @@ htmlcov
 .coverage
 env39
 
-# editor
+# editor & AI
 *.code-workspace
 .vscode/
+.claude
 
 # confidentiality
 config/*.json

@@ -30,7 +30,7 @@ def sanity_check_emails(data_dir: str, emails: Dict[str, str]):
 
 
 def create_emails(
-    pairings: Dict[str, Any], email_template_fname: str, output_dir: str
+    pairings: dict[str, Any], email_template_fname: str, output_dir: str
 ) -> None:
     """
     Create HTML email text for everyone and write it to `output_dir`

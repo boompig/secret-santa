@@ -1,17 +1,18 @@
-from __future__ import print_function
-
-import json
 import logging
 import random
 import sys
-from typing import Dict, List, Optional
+
+from .file_utils import (
+    read_participants_json,
+    read_constraints_json,
+    ParticipantSchema,
+)
 
 
-def read_constraints(fname: str) -> Dict[str, list]:
+def read_constraints(fname: str) -> dict[str, list]:
+    """Just a CLI interface to the method from file_utils"""
     try:
-        with open(fname) as fp:
-            o = json.load(fp)
-            return o.get("constraints", {})
+        return read_constraints_json(fname)
     except FileNotFoundError:
         logging.critical("Failed to read people from file %s", fname)
         sys.exit(1)
@@ -47,7 +48,7 @@ def get_derangement(l: list) -> list:
     return l2
 
 
-def secret_santa_hat_simple(names: List[str]) -> Dict[str, str]:
+def secret_santa_hat_simple(names: list[str]) -> dict[str, str]:
     """This is the nice and simple way of generating correct pairings"""
     assert isinstance(names, list)
     derangement = get_derangement(names)
@@ -59,9 +60,9 @@ def secret_santa_hat_simple(names: List[str]) -> Dict[str, str]:
 
 
 def secret_santa_search(
-    assignments: Dict[str, str],
-    available_givers: List[str],
-    available_receivers: List[str],
+    assignments: dict[str, str],
+    available_givers: list[str],
+    available_receivers: list[str],
 ) -> bool:
     """
     This is an implementation of secret santa as a search program.
@@ -101,7 +102,7 @@ def secret_santa_search(
 
 
 def check_always_constraints(
-    assignments: Dict[str, str], always_constraints: List[list]
+    assignments: dict[str, str], always_constraints: list[list]
 ) -> bool:
     """
     Return true iff the always constraints are all satisfied
@@ -118,12 +119,14 @@ def check_always_constraints(
     if num_constraints == 0:
         logging.debug("No always constraints found")
     else:
-        logging.info(f"All {num_constraints} always constraints are satisfied")
+        logging.info(
+            f"[secret_santa.check_always_constraints] All {num_constraints} always constraints are satisfied"
+        )
     return True
 
 
 def check_never_constraints(
-    assignments: Dict[str, str], never_constraints: List[list]
+    assignments: dict[str, str], never_constraints: list[list]
 ) -> bool:
     """
     Return true iff the never constraints are all satisfied
@@ -145,11 +148,11 @@ def check_never_constraints(
 
 
 def secret_santa_hat(
-    names: List[str],
+    names: list[str],
     random_seed: int,
-    always_constraints: Optional[List[list]] = None,
-    never_constraints: Optional[List[list]] = None,
-) -> Dict[str, str]:
+    always_constraints: list[list] | None = None,
+    never_constraints: list[list] | None = None,
+) -> dict[str, str]:
     """
     Constraints are expressed with giver first then receiver
     """
@@ -225,18 +228,18 @@ def secret_santa_hat(
     return assignments
 
 
-def read_people(fname: str) -> Dict[str, dict]:
+def read_people(fname: str) -> dict[str, ParticipantSchema]:
+    """Just a CLI interface to the method in file_utils"""
     try:
-        with open(fname) as fp:
-            return json.load(fp)["names"]
+        return read_participants_json(fname)
     except FileNotFoundError:
         logging.critical("Failed to read people from file %s", fname)
         sys.exit(1)
 
 
 def create_pairings_from_file(
-    people_fname: str, random_seed: Optional[int] = None
-) -> Dict[str, str]:
+    people_fname: str, random_seed: int | None = None
+) -> dict[str, str]:
     """
     Given a file which lists people in a pre-specified format, return a mapping from giver to receiver
     :param people_fname: A file that can be consumed by `read_people`
@@ -259,7 +262,7 @@ def create_pairings_from_file(
     return pairings
 
 
-def sanity_check_pairings(pairings: Dict[str, str], names: List[str]):
+def sanity_check_pairings(pairings: dict[str, str], names: list[str]):
     """
     Throws assertion error on failure
     Warning: this method sorts the names array

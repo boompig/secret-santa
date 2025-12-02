@@ -22,6 +22,8 @@ def read_aws_config(fname: str) -> dict:
 
 
 def create_text_messages(pairings: Dict[str, str], template_file: str, output_dir: str):
+    """Take the SMS template and for each giver generate a .txt file to send out."""
+
     d = os.path.join(output_dir, "sms")
     if not os.path.exists(d):
         os.makedirs(d)
