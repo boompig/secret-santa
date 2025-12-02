@@ -13,3 +13,9 @@ tasks:
     cmds:
       - uv run ruff check secret_santa/ tests/
       - uv run ruff format --check secret_santa/ tests/
+
+  ci:
+    cmds:
+      - task: typecheck
+      - task: lint
+      - task: test

@@ -11,9 +11,9 @@ from secret_santa.crypto_utils import get_random_key
 
 CONFIG_DIR = os.path.join(os.path.dirname(__file__), "..", "config")
 NAMES = {
-    "Light Yagami": "kira@deathnote.slav",
-    "Eru Roraito": "l@deathnote.slav",
-    "Misa Amane": "misamisa@deathnote.slav",
+    "Light Yagami": {"email": "kira@deathnote.slav"},
+    "Eru Roraito": {"email": "l@deathnote.slav"},
+    "Misa Amane": {"email": "misamisa@deathnote.slav"},
 }
 SEED = 42
 

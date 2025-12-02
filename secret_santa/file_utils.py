@@ -37,7 +37,9 @@ def read_participants_json(fname: str) -> dict[str, ParticipantSchema]:
             assert isinstance(names, dict)
             for name, p_obj in names.items():
                 assert isinstance(name, str)
-                assert isinstance(p_obj, dict)
+                assert isinstance(p_obj, dict), (
+                    f"Expected dict for participant {name}, got {type(p_obj)}"
+                )
 
                 assert "name" not in p_obj, "Participant name must be stored as the key"
                 p_obj["name"] = name
