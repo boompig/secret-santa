@@ -34,3 +34,6 @@ data/
 
 # notes
 NOTE.md
+
+# secrets
+.env.development.local

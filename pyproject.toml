@@ -14,15 +14,19 @@ dependencies = [
     "jinja2>=3.1.6",
     "markdown2>=2.5.4",
     "pydantic>=2.12.5",
+    "python-dotenv>=1.2.1",
     "requests>=2.32.5",
     "sqlalchemy>=2.0.44",
+    "twilio>=9.9.0",
 ]
 
 [dependency-groups]
 dev = [
+    "coloredlogs>=15.0.1",
     "mypy>=1.19.0",
     "mypy-boto3>=1.41.0",
     "pytest>=9.0.1",
+    "python-dotenv[cli]>=1.2.1",
     "ruff>=0.14.7",
     "types-requests>=2.32.4.20250913",
 ]

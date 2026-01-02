@@ -9,10 +9,13 @@ import json
 import logging
 import os
 import requests
+from enum import StrEnum
 from typing import Dict
 
+import coloredlogs
 import boto3
 import jinja2
+from twilio.rest import Client as TwilioClient
 
 from .file_utils import ParticipantSchema
 
@@ -45,10 +48,13 @@ def create_text_messages(pairings: Dict[str, str], template_file: str, output_di
     logging.debug("All SMS templates created")
 
 
-def clicksend_send_sms(to_phone_number: str, message: str):
+def _clicksend_send_sms(to_phone_number: str, message: str):
     from pprint import pprint
 
+    logging.info("Sending SMS with ClickSend to %s", to_phone_number)
+
     session = requests.Session()
+    # TODO: Move credentials to config file
     session.auth = ("dbkats@gmail.com", "D19044A5-C13E-697E-F740-0B1C1C0611D6")
     data = {
         "messages": [
@@ -64,6 +70,33 @@ def clicksend_send_sms(to_phone_number: str, message: str):
         json=data,
     )
     pprint(res)
+
+
+def _twilio_send_sms(to_phone_number: str, message: str) -> None:
+    logging.info("Sending SMS with Twilio to %s...", to_phone_number)
+    sid = os.environ["TWILIO_ACCOUNT_SID"]
+    token = os.environ["TWILIO_AUTH_TOKEN"]
+    from_number = os.environ["TWILIO_FROM_PHONE_NUMBER"]
+
+    client = TwilioClient(sid, token)
+    message = client.messages.create(
+        body=message,
+        from_=from_number,
+        to=to_phone_number,
+    )
+    # NOTE: mypy does not understand that the message returned is a complex object not a str
+    logging.info("Message SID is %s", message.sid)  # type: ignore
+
+
+class SmsProvider(StrEnum):
+    # doesn't work that well - 2025
+    AWS_SNS = "AWS_SNS"
+    # doesn't work that well - 2025
+    CLICKSEND = "CLICKSEND"
+    TWILIO = "TWILIO"
+
+
+PROVIDER = SmsProvider.TWILIO
 
 
 def send_all_sms_messages(
@@ -91,7 +124,6 @@ def send_all_sms_messages(
 
     messages = {}
 
-    use_clicksend = True
     # collect all the messages first
     # this is done to make sure we can send messages to everyone
     for giver, notify_methods in people.items():
@@ -106,11 +138,14 @@ def send_all_sms_messages(
             messages[giver] = {"message": message, "number": number}
     for giver, o in messages.items():
         if is_live:
-            logging.info(f"Sending SMS message to {giver}...")
-            if use_clicksend:
-                clicksend_send_sms(o["number"], o["message"])
-            else:
+            logging.info("Sending SMS message to %s...", giver)
+            if PROVIDER == SmsProvider.CLICKSEND:
+                _clicksend_send_sms(o["number"], o["message"])
+            elif PROVIDER == SmsProvider.AWS_SNS:
+                logging.info("Sending SMS message with AWS SNS to %s", o["number"])
                 client.publish(PhoneNumber=o["number"], Message=o["message"])
+            else:
+                _twilio_send_sms(o["number"], o["message"])
         else:
             print(o["number"])
             print(o["message"])
@@ -119,4 +154,10 @@ def send_all_sms_messages(
 
 
 if __name__ == "__main__":
-    clicksend_send_sms("+12134369175", "test message, please ignore")
+    from .cli_utils import setup_logging
+
+    setup_logging(verbose=False)
+
+    coloredlogs.install(level=logging.INFO)
+    logging.info("Sending test SMS message...")
+    _twilio_send_sms("+12134369175", "test message, please ignore")
